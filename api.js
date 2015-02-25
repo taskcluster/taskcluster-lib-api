@@ -900,7 +900,7 @@ API.prototype.reference = function(options) {
   var reference = {
     version:            0,
     '$schema':          'http://schemas.taskcluster.net/base/v1/' +
-                        'api-reference.json',
+                        'api-reference.json#',
     title:              this._options.title,
     description:        this._options.description,
     baseUrl:            options.baseUrl,
