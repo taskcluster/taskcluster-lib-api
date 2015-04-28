@@ -732,19 +732,93 @@ var API = function(options) {
   this._entries = [];
 };
 
+/** Stability levels offered by API method */
+var stability = {
+  /**
+   * API has been marked for deprecation and should not be used in new clients.
+   *
+   * Note, documentation string for a deprecated API end-point should outline
+   * the deprecation strategy.
+   */
+  deprecated:       'deprecated',
+  /**
+   * API may change and resources may be deleted without warning
+   *
+   * **Intended Usage:**
+   *  - Prototype API end-points,
+   *  - API end-points intended displaying unimportant state.
+   *    (e.g. API to fetch state from a provisioner)
+   */
+  experimental:     'experimental',
+  /**
+   * API may change, we will attempt to warn clients before breakages and
+   * resource deletion.
+   *
+   * **Intended Usage:**
+   *  - Prototypes used in non-critical production by third parties,
+   *  - API end-points of little public interest,
+   *    (e.g. API to define workerTypes for a provisioner)
+   */
+  unstable:         'unstable',
+  /**
+   * We facilitate gradual migration when the API changes, and we monitor legacy
+   * usage, ensuring that nobody has used the legacy API for 72 hours before
+   * we remove legacy support.
+   *
+   * Resources are not deleted, they may expire or/be deleted as documented,
+   * but resources will not magically disappear.
+   *
+   * **Intended Usage:**
+   *  - API end-points used in critical production.
+   *
+   * Note, it is not a goal to progress API end-points beyond this
+   * stability-level unless there is good reasons to do so.
+   */
+  stable:           'stable',
+  /**
+   * We recognize that we can't facilitate gradual migration, as too many
+   * components depend on this API. We will not break backwards compatibility
+   * going forward. But we may still add additional features, properties, etc.
+   * In a strictly backwards compatible manner.
+   *
+   * **Intended Usage:**
+   *  - APIs so widely used that refactoring would be impossible.
+   *  - APIs whose concepts makes up the essence of TaskCluster.
+   *
+   * Note, this stability-level is only intended for widely used API end-points,
+   * where we simply don't imagine that it would be possible to track down all
+   * the clients.
+   */
+  frozen:           'frozen',
+  /**
+   * We recognize that we can't facilitate gradual migration, and that adding
+   * features, properties, etc. would be undesired. Any changes to API
+   * end-points with this stability-level are strictly internal, and invisible
+   * to clients.
+   *
+   * **Intended Usage:**
+   *  - No intended usage identified yet.
+   */
+  locked:           'locked'
+};
+
+// List of valid stability-levels
+var STABILITY_LEVELS = _.values(stability);
+
 /**
  * Declare an API end-point entry, where options is on the following form:
  *
  * {
- *   method:   'post|head|put|get|delete',
- *   route:    '/object/:id/action/:parameter',        // Only on illustrated form
- *   name:     'identifierForLibraries',               // identifier used by client libraries
- *   scopes:   ['admin', 'superuser'],                 // Scopes of which user must have one
- *   input:    'http://schemas...input-schema.json',   // optional, null if no input
- *   output:   'http://schemas...output-schema.json',  // optional, null if no output
- *   skipInputValidation:    true,                     // defaults to false
- *   skipOutputValidation:   true,                     // defaults to false
- *   title:    "My API Method",
+ *   method:    'post|head|put|get|delete',
+ *   route:     '/object/:id/action/:parameter', // Only on illustrated form
+ *   name:      'identifierForLibraries',        // method identifier
+ *   stability: base.API.stability.experimental, // API stability level
+ *   scopes:    ['admin', 'superuser'],          // Scopes, caller must have one
+ *   input:     'http://schemas...input-schema.json',  // optional, null if none
+ *   output:    'http://schemas...output-schema.json', // optional, null if none
+ *   skipInputValidation:    true,              // defaults to false
+ *   skipOutputValidation:   true,              // defaults to false
+ *   title:     "My API Method",
  *   description: [
  *     "Description of method in markdown, enjoy"
  *   ].join('\n')
@@ -763,6 +837,13 @@ API.prototype.declare = function(options, handler) {
   ['method', 'route', 'title', 'description'].forEach(function(key) {
     assert(options[key], "Option '" + key + "' must be provided");
   });
+  // Default to experimental API end-points
+  if (!options.stability) {
+    options.stability = stability.experimental;
+  }
+  assert(STABILITY_LEVELS.indexOf(options.stability) !== -1,
+         "options.stability must be a valid stability-level, " +
+         "see base.API.stability for valid options");
   options.handler = handler;
   this._entries.push(options);
 };
@@ -922,6 +1003,7 @@ API.prototype.reference = function(options) {
         route:          route,
         args:           params,
         name:           entry.name,
+        stability:      entry.stability,
         title:          entry.title,
         description:    entry.description
       };
@@ -1047,3 +1129,4 @@ module.exports = API;
 API.authenticate  = authenticate;
 API.schema        = schema;
 API.handle        = handle;
+API.stability     = stability;
