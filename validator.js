@@ -72,7 +72,8 @@ var Validator = function(schemas) {
   });
 };
 
-/** Validate a JSON object given a schema identifier
+/**
+ * Validate a JSON object given a schema identifier
  * return null if there is no errors and list of errors if we have errors.
  *
  * For a decent introduction to JSON schemas see:
