@@ -752,15 +752,8 @@ API.prototype.declare = function(options, handler) {
   ['method', 'route', 'title', 'description'].forEach(function(key) {
     assert(options[key], "Option '" + key + "' must be provided");
   });
-  // verify the proper form of scopes
   if ('scopes' in options) {
-    var msg = "scopes must be an array of arrays of strings (disjunctive normal form)";
-    assert(Array.isArray(options.scopes), msg);
-    assert(options.scopes.every(function(conj) {
-        return Array.isArray(conj) && conj.every(function(scope) {
-            return typeof(scope) == 'string'
-        });
-    }), msg);
+    utils.validateScopeSets(options.scopes);
   }
   options.handler = handler;
   if (options.input) {
