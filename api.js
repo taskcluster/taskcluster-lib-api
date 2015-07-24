@@ -727,7 +727,8 @@ var API = function(options) {
  *   method:   'post|head|put|get|delete',
  *   route:    '/object/:id/action/:parameter',        // Only on illustrated form
  *   name:     'identifierForLibraries',               // identifier used by client libraries
- *   scopes:   ['admin', 'superuser'],                 // Scopes of which user must have one
+ *   scopes:   [['admin'], ['obj:perm1', 'obj:perm2']],// Scopes in disjunctive normal format:
+ *                                                     // admin OR (obj:perm1 AND obj:perm2)
  *   input:    'http://schemas...input-schema.json',   // optional, null if no input
  *   output:   'http://schemas...output-schema.json',  // optional, null if no output
  *   skipInputValidation:    true,                     // defaults to false
@@ -751,6 +752,16 @@ API.prototype.declare = function(options, handler) {
   ['method', 'route', 'title', 'description'].forEach(function(key) {
     assert(options[key], "Option '" + key + "' must be provided");
   });
+  // verify the proper form of scopes
+  if ('scopes' in options) {
+    var msg = "scopes must be an array of arrays of strings (disjunctive normal form)";
+    assert(Array.isArray(options.scopes), msg);
+    assert(options.scopes.every(function(conj) {
+        return Array.isArray(conj) && conj.every(function(scope) {
+            return typeof(scope) == 'string'
+        });
+    }), msg);
+  }
   options.handler = handler;
   if (options.input) {
     options.input = this._options.schemaPrefix + options.input;
