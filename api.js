@@ -742,64 +742,33 @@ var stability = {
    */
   deprecated:       'deprecated',
   /**
-   * API may change and resources may be deleted without warning
+   * Unless otherwise stated API may change and resources may be deleted
+   * without warning. Often we will, however, try to deprecate the API first
+   * and keep around as `deprecated`.
    *
    * **Intended Usage:**
    *  - Prototype API end-points,
    *  - API end-points intended displaying unimportant state.
    *    (e.g. API to fetch state from a provisioner)
-   */
-  experimental:     'experimental',
-  /**
-   * API may change, we will attempt to warn clients before breakages and
-   * resource deletion.
-   *
-   * **Intended Usage:**
    *  - Prototypes used in non-critical production by third parties,
    *  - API end-points of little public interest,
    *    (e.g. API to define workerTypes for a provisioner)
-   */
-  unstable:         'unstable',
-  /**
-   * We facilitate gradual migration when the API changes, and we monitor legacy
-   * usage, ensuring that nobody has used the legacy API for 72 hours before
-   * we remove legacy support.
    *
-   * Resources are not deleted, they may expire or/be deleted as documented,
-   * but resources will not magically disappear.
+   * Generally, this is a good stability levels for anything under-development,
+   * or when we know that there is a limited number of consumers so fixing
+   * the world after breaking the API is easy.
+   */
+  experimental:     'experimental',
+  /**
+   * API is stable and we will not delete resources or break the API suddenly.
+   * As a guideline we will always facilitate gradual migration if we change
+   * a stable API.
    *
    * **Intended Usage:**
    *  - API end-points used in critical production.
-   *
-   * Note, it is not a goal to progress API end-points beyond this
-   * stability-level unless there is good reasons to do so.
+   *  - APIs so widely used that refactoring would be hard.
    */
-  stable:           'stable',
-  /**
-   * We recognize that we can't facilitate gradual migration, as too many
-   * components depend on this API. We will not break backwards compatibility
-   * going forward. But we may still add additional features, properties, etc.
-   * In a strictly backwards compatible manner.
-   *
-   * **Intended Usage:**
-   *  - APIs so widely used that refactoring would be impossible.
-   *  - APIs whose concepts makes up the essence of TaskCluster.
-   *
-   * Note, this stability-level is only intended for widely used API end-points,
-   * where we simply don't imagine that it would be possible to track down all
-   * the clients.
-   */
-  frozen:           'frozen',
-  /**
-   * We recognize that we can't facilitate gradual migration, and that adding
-   * features, properties, etc. would be undesired. Any changes to API
-   * end-points with this stability-level are strictly internal, and invisible
-   * to clients.
-   *
-   * **Intended Usage:**
-   *  - No intended usage identified yet.
-   */
-  locked:           'locked'
+  stable:           'stable'
 };
 
 // List of valid stability-levels
