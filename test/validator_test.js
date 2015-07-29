@@ -1,20 +1,24 @@
 suite("validator", function() {
   var assert  = require('assert');
   var path    = require('path');
-  var aws     = require('aws-sdk-promise');
   var base    = require('../');
   var express = require('express');
   var http    = require('http');
   var fs      = require('fs');
   var Promise = require('promise');
+  var debug   = require('debug')('test:validator');
+
+  // Common options for loading schemas in all tests
+  var opts = {
+    publish:        false,
+    folder:         path.join(__dirname, 'schemas'),
+    constants:      {"my-constant": 42},
+    schemaBaseUrl:  'http://localhost:1203/'
+  };
 
   // Test that we can load from a folder
   test("load from folder (json)", function() {
-    return base.validator({
-      publish:      false,
-      folder:       path.join(__dirname, 'schemas'),
-      constants:    {"my-constant": 42}
-    }).then(function(validator) {
+    return base.validator(opts).then(function(validator) {
       var errors = validator.check({
         value: 42
       }, 'http://localhost:1203/test-schema.json');
@@ -26,12 +30,23 @@ suite("validator", function() {
     });
   });
 
+  test("load from folder (invalid schema -> error)", function() {
+    try {
+      base.validator({
+        publish:        false,
+        folder:         path.join(__dirname, 'invalid-schemas'),
+        constants:      {"my-constant": 42},
+        schemaBaseUrl:  'http://localhost:1203/'
+      });
+      assert(false, "Expected an error");
+    } catch (err) {
+      debug("Expected error: %j", err);
+      assert(err && err.error, "Expected an validation error");
+    }
+  });
+
   test("test $ref", function() {
-    return base.validator({
-      publish:      false,
-      folder:       path.join(__dirname, 'schemas'),
-      constants:    {"my-constant": 42}
-    }).then(function(validator) {
+    return base.validator(opts).then(function(validator) {
       var errors = validator.check({
         reference: {
           value: 42
@@ -47,11 +62,7 @@ suite("validator", function() {
   });
 
   test("test default values (no key provided)", function() {
-    return base.validator({
-      publish:      false,
-      folder:       path.join(__dirname, 'schemas'),
-      constants:    {"my-constant": 42}
-    }).then(function(validator) {
+    return base.validator(opts).then(function(validator) {
       var json = {
         value: 42
       };
@@ -71,11 +82,7 @@ suite("validator", function() {
   });
 
   test("test default values (value provided)", function() {
-    return base.validator({
-      publish:      false,
-      folder:       path.join(__dirname, 'schemas'),
-      constants:    {"my-constant": 42}
-    }).then(function(validator) {
+    return base.validator(opts).then(function(validator) {
       var json = {
         value: 42,
         optionalValue: "procided-value"
@@ -96,11 +103,7 @@ suite("validator", function() {
   });
 
   test("test default values (array and object)", function() {
-    return base.validator({
-      publish:      false,
-      folder:       path.join(__dirname, 'schemas'),
-      constants:    {"my-constant": 42}
-    }).then(function(validator) {
+    return base.validator(opts).then(function(validator) {
       var json = {};
       var errors = validator.check(
         json,
@@ -120,11 +123,7 @@ suite("validator", function() {
   });
 
   test("load from folder (yml)", function() {
-    return base.validator({
-      publish:      false,
-      folder:       path.join(__dirname, 'schemas'),
-      constants:    {"my-constant": 42}
-    }).then(function(validator) {
+    return base.validator(opts).then(function(validator) {
       var errors = validator.check({
         value: 42
       }, 'http://localhost:1203/yml-test-schema.json');
@@ -137,11 +136,7 @@ suite("validator", function() {
   });
 
   test("load from folder (yaml)", function() {
-    return base.validator({
-      publish:      false,
-      folder:       path.join(__dirname, 'schemas'),
-      constants:    {"my-constant": 42}
-    }).then(function(validator) {
+    return base.validator(opts).then(function(validator) {
       var errors = validator.check({
         value: 42
       }, 'http://localhost:1203/yaml-test-schema.json');
@@ -201,11 +196,7 @@ suite("validator", function() {
   });
 
   test("find errors", function() {
-    return base.validator({
-      publish:      false,
-      folder:       path.join(__dirname, 'schemas'),
-      constants:    {"my-constant": 42}
-    }).then(function(validator) {
+    return base.validator(opts).then(function(validator) {
       var errors = validator.check({
         value: 43
       }, 'http://localhost:1203/test-schema.json');
@@ -213,53 +204,21 @@ suite("validator", function() {
     });
   });
 
-  test("test publish", function() {
-    var cfg = base.config({
-      envs: [
-        'aws_accessKeyId',
-        'aws_secretAccessKey',
-        'aws_region',
-        'aws_apiVersion',
-        'schemaTestBucket'
-      ],
-      filename:               'taskcluster-base-test'
+  test("can validate", function() {
+    return base.validator(opts).then(function(validator) {
+      var errors = validator.check({
+        value: 42
+      }, 'http://localhost:1203/test-schema.json');
+      assert(errors === null, "Got errors");
     });
+  });
 
-    if (cfg.get('aws') && cfg.get('schemaTestBucket')) {
-      return base.validator({
-        publish:      true,
-        schemaPrefix: 'base/test/',
-        schemaBucket: cfg.get('schemaTestBucket'),
-        aws:          cfg.get('aws'),
-        folder:       path.join(__dirname, 'schemas'),
-        constants:    {"my-constant": 42}
-      }).then(function(validator) {
-        var errors = validator.check({
-          value: 42
-        }, 'http://localhost:1203/test-schema.json');
-        assert(errors === null, "Got errors");
-
-        // Get the file... we don't bother checking the contents this is good
-        // enough
-        var s3 = new aws.S3(cfg.get('aws'));
-        return s3.getObject({
-          Bucket:     cfg.get('schemaTestBucket'),
-          Key:        'base/test/test-schema.json'
-        }).promise().then(function() {
-          return s3.getObject({
-            Bucket:     cfg.get('schemaTestBucket'),
-            Key:        'base/test/yaml-test-schema.json'
-          }).promise();
-        }).then(function() {
-          return s3.getObject({
-            Bucket:     cfg.get('schemaTestBucket'),
-            Key:        'base/test/yml-test-schema.json'
-          }).promise();
-        });
-      });
-    } else {
-      console.log("Skipping 'publish', missing config file: " +
-                  "taskcluster-base-test.conf.json");
-    }
+  test("automatically set schema.id", function() {
+    return base.validator(opts).then(function(validator) {
+      var errors = validator.check({
+        value: 42
+      }, 'http://localhost:1203/auto-named-schema.json');
+      assert(errors === null, "Got errors");
+    });
   });
 });

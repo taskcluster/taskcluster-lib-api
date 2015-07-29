@@ -15,25 +15,62 @@ require('superagent-hawk')(require('superagent'));
 var request       = require('superagent-promise');
 var Validator     = require('./validator').Validator;
 var utils         = require('./utils');
-var stats         = require('./stats');
+var stats         = require('./lib/stats');
 var crypto        = require('crypto');
 var hoek          = require('hoek');
+var series        = require('./lib/series');
 
-/** Structure for response times series */
-var ResponseTimes = new stats.Series({
-  name:                 'ResponseTimes',
-  columns: {
-    duration:           stats.types.Number,
-    statusCode:         stats.types.Number,
-    requestMethod:      stats.types.String,
-    method:             stats.types.String,
-    component:          stats.types.String
-  },
-  // Additional columns are req.params prefixed with "param", these should all
-  // be strings
-  additionalColumns:    stats.types.String
-});
-
+/**
+ * Create parameter validation middle-ware instance, given a mapping from
+ * parameter to regular expression or function that returns a message as string
+ * if the parameter is invalid.
+ *
+ * options:
+ * {
+ *   param1: /.../,               // Reg-exp pattern
+ *   param2(val) { return "..." } // Function, returns message if invalid
+ * }
+ *
+ * Parameters not listed in `req.params` will be ignored. But parameters
+ * present must match the pattern given in `options` or the request will be
+ * rejected with a 400 error message.
+ */
+var parameterValidator = function(options) {
+  // Validate options
+  _.forIn(options, function(pattern, param) {
+    assert(pattern instanceof RegExp || pattern instanceof Function,
+           "Pattern given for param: '" + param + "' must be a RegExp or " +
+           "a function");
+  });
+  return function(req, res, next) {
+    var errors = [];
+    _.forIn(req.params, function(val, param) {
+      var pattern = options[param];
+      if (pattern instanceof RegExp) {
+        if (!pattern.test(val)) {
+          errors.push(
+            "URL parameter '" + param + "' given as '" + val + "' must match " +
+            "regular expression: '" + pattern.toString() + "'"
+          );
+        }
+      } else if (pattern instanceof Function) {
+        var msg = pattern(val);
+        if (typeof(msg) === 'string') {
+          errors.push(
+            "URL parameter '" + param + "' given  as '" + val +  "' is not " +
+            "valid: " + msg
+          );
+        }
+      }
+    });
+    if (errors.length > 0) {
+      return res.status(400).json({
+        'message':  "Invalid URL patterns:\n" + errors.join('\n'),
+      });
+    }
+    return next();
+  };
+};
 
 /**
  * Declare {input, output} schemas as options to validate
@@ -49,7 +86,7 @@ var ResponseTimes = new stats.Series({
  * This validates body against the schema given in `options.input` and returns
  * and a 400 error messages to request if there is a schema mismatch.
  * Handlers below this should output the reply JSON structure with `req.reply`.
- * this will validate it against `options.output` if provided.
+ * this will validate it against `outputSchema` if provided.
  * Handlers may output errors using `req.json`, as `req.reply` will validate
  * against schema and always returns a 200 OK reply.
  */
@@ -79,8 +116,8 @@ var schema = function(validator, options) {
           res.status(500).json({
             'message':  "Internal Server Error",
           });
-          debug("Reply for %s didn't match schema: %s got errors:\n%s",
-                req.url, options.output, JSON.stringify(errors, null, 4));
+          debug("Reply for %s didn't match schema: %s got errors: %j from output: %j",
+                req.url, options.output, errors, json);
           return;
         }
       }
@@ -717,7 +754,12 @@ var handle = function(handler, context) {
  * options:
  * {
  *   title:         "API Title",
- *   description:   "API description in markdown"
+ *   description:   "API description in markdown",
+ *   schemaPrefix:  "http://schemas..../queue/",    // Prefix for all schemas
+ *   params: {                                      // Patterns for URL params
+ *     param1:  /.../,                // Reg-exp pattern
+ *     param2(val) { return "..." }   // Function, returns message if invalid
+ *   }
  * }
  *
  * The API object will only modified by declarations, when `mount` or `publish`
@@ -728,7 +770,10 @@ var API = function(options) {
   ['title', 'description'].forEach(function(key) {
     assert(options[key], "Option '" + key + "' must be provided");
   });
-  this._options = options;
+  this._options = _.defaults({}, options, {
+    schemaPrefix:   '',
+    paramPatterns:  {}
+  });
   this._entries = [];
 };
 
@@ -779,14 +824,21 @@ var STABILITY_LEVELS = _.values(stability);
  *
  * {
  *   method:    'post|head|put|get|delete',
- *   route:     '/object/:id/action/:parameter', // Only on illustrated form
- *   name:      'identifierForLibraries',        // method identifier
+ *   route:    '/object/:id/action/:param',      // URL pattern with parameters
+ *   params: {                                   // Patterns for URL params
+ *     param: /.../,                             // Reg-exp pattern
+ *     id(val) { return "..." }                  // Function, returns message if invalid
+ *     // The `params` option from new API(), will be used as fall-back
+ *   },
+ *   name:     'identifierForLibraries',         // identifier for client libraries
  *   stability: base.API.stability.experimental, // API stability level
- *   scopes:    ['admin', 'superuser'],          // Scopes, caller must have one
- *   input:     'http://schemas...input-schema.json',  // optional, null if none
- *   output:    'http://schemas...output-schema.json', // optional, null if none
- *   skipInputValidation:    true,              // defaults to false
- *   skipOutputValidation:   true,              // defaults to false
+ *   scopes:   ['admin', 'superuser'],           // Scopes for the request
+ *   scopes:   [['admin'], ['per1', 'per2']],    // Scopes in disjunctive form
+ *                                               // admin OR (per1 AND per2)
+ *   input:    'input-schema.json',              // optional, null if no input
+ *   output:   'output-schema.json',             // optional, null if no output
+ *   skipInputValidation:    true,               // defaults to false
+ *   skipOutputValidation:   true,               // defaults to false
  *   title:     "My API Method",
  *   description: [
  *     "Description of method in markdown, enjoy"
@@ -813,7 +865,17 @@ API.prototype.declare = function(options, handler) {
   assert(STABILITY_LEVELS.indexOf(options.stability) !== -1,
          "options.stability must be a valid stability-level, " +
          "see base.API.stability for valid options");
+  options.params = _.defaults({}, options.params || {}, this._options.params);
+  if ('scopes' in options) {
+    utils.validateScopeSets(options.scopes);
+  }
   options.handler = handler;
+  if (options.input) {
+    options.input = this._options.schemaPrefix + options.input;
+  }
+  if (options.output) {
+    options.output = this._options.schemaPrefix + options.output;
+  }
   this._entries.push(options);
 };
 
@@ -870,7 +932,7 @@ API.prototype.router = function(options) {
   var reporter = null;
   if (options.drain) {
     assert(options.component, "The component must be named in statistics!");
-    reporter = ResponseTimes.reporter(options.drain);
+    reporter = series.ResponseTimes.reporter(options.drain);
   }
 
   // Create router
@@ -923,6 +985,7 @@ API.prototype.router = function(options) {
     // Add authentication, schema validation and handler
     middleware.push(
       authenticate(options.nonceManager, options.clientLoader, entry),
+      parameterValidator(entry.params),
       schema(options.validator, entry),
       handle(entry.handler, options.context)
     );
@@ -941,7 +1004,7 @@ API.prototype.router = function(options) {
  *
  * options:
  * {
- *   baseUrl:    'https://example.com/v1' // URL under which routes are mounted
+ *   baseUrl:       'https://example.com/v1'  // URL where routes are mounted
  * }
  */
 API.prototype.reference = function(options) {
@@ -977,7 +1040,7 @@ API.prototype.reference = function(options) {
         description:    entry.description
       };
       if (entry.scopes) {
-        retval.scopes = utils.normalizeScopeSets(entry.scopes);
+        retval.scopes = entry.scopes;
       }
       if (entry.input) {
         retval.input  = entry.input;
@@ -1015,7 +1078,7 @@ API.prototype.reference = function(options) {
  *
  * options:
  * {
- *   baseUrl:         'https://example.com/v1' // URL under which routes are mounted
+ *   baseUrl:         'https://example.com/v1' // URL where routes are mounted
  *   referencePrefix: 'queue/v1/api.json'      // Prefix within S3 bucket
  *   referenceBucket: 'reference.taskcluster.net',
  *   aws: {             // AWS credentials and region
