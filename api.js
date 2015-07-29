@@ -823,7 +823,7 @@ var STABILITY_LEVELS = _.values(stability);
  * Declare an API end-point entry, where options is on the following form:
  *
  * {
- *   method:    'post|head|put|get|delete',
+ *   method:   'post|head|put|get|delete',
  *   route:    '/object/:id/action/:param',      // URL pattern with parameters
  *   params: {                                   // Patterns for URL params
  *     param: /.../,                             // Reg-exp pattern
