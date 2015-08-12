@@ -20,6 +20,9 @@ var crypto        = require('crypto');
 var hoek          = require('hoek');
 var series        = require('./lib/series');
 
+// Default baseUrl for authentication server
+var AUTH_BASE_URL = 'https://auth.taskcluster.net/v1';
+
 /**
  * Create parameter validation middle-ware instance, given a mapping from
  * parameter to regular expression or function that returns a message as string
@@ -720,6 +723,160 @@ authenticate.clientCache  = clientCache;
 authenticate.clientLoader = clientLoader;
 authenticate.nonceManager = nonceManager;
 
+
+/**
+ * Make a function for the remote signature validation.
+ *
+ * options:
+ * {
+ *    authBaseUrl:   'https://....' // baseUrl for authentication server
+ * }
+ *
+ * The function returns takes an object:
+ *     {method, url, host, port, authorization}
+ * And return promise for an object on the form:
+ *     {error, message, scopes}
+ *
+ * The method returned by this function works as `signatureValidator` for
+ * `remoteAuthentication`.
+ */
+var makeRemoteSignatureValidator = function(options) {
+  assert(options.authBaseUrl, "options.authBaseUrl is required");
+  return function(data) {
+    return request
+      .post(options.authBaseUrl + '/authenticate-hawk')
+      .type('json')
+      .send(data)
+      .end()
+      .then(function(res) {
+        if (!res.ok) {
+          throw new Error(
+            "Received status code: " + res.status + " from /authenticate-hawk"
+          );
+        }
+        return res.body;
+      });
+  };
+};
+
+/**
+ * Validate signature using remote API end-point
+ *
+ * options:
+ * {
+ *    signatureValidator:   async (data) => {error, message, scopes}
+ * }
+ *
+ * where `data` is the form: {method, url, host, port, authorization}.
+ */
+var remoteAuthentication = function(options, entry) {
+  // Returns promise for object on the form: {error, message, scopes}
+  var authenticate = function(req) {
+    // Check that we're not using two authentication schemes, we could
+    // technically allow two. There are cases where we redirect and it would be
+    // smart to let bewit overwrite header authentication.
+    // But neither Azure or AWS tolerates two authentication schemes,
+    // so this is probably a fair policy for now. We can always allow more.
+    if (req.headers && req.headers.authorization &&
+        req.query && req.query.bewit) {
+      return Promise.resolve({
+        error:    true,
+        message:  "Cannot use two authentication schemes at once " +
+                  "this request has both bewit in querystring and " +
+                  "and 'authorization' header"
+      });
+    }
+
+    // If not authentication is provided, we just return valid with zero scopes
+    if ((!req.query || !req.query.bewit) &&
+        (!req.headers || !req.headers.authorization)) {
+      return Promise.resolve({
+        error:  true,
+        scopes: []
+      });
+    }
+
+    // Parse host header
+    var host = hawk.utils.parseHost(req);
+    // Find port, overwrite if forwarded by reverse proxy
+    var port = host.port;
+    if (req.headers['x-forwarded-port'] !== undefined) {
+      port = parseInt(req.headers['x-forwarded-port']);
+    }
+
+    // Send input to auth server
+    return validateSignatureRemotely({
+      method:           req.method,
+      url:              req.originalUrl,
+      host:             host.name,
+      port:             port,
+      authorization:    req.headers.authorization
+    }, options);
+  };
+
+  return function(req, res, next) {
+    return authenticate(req).then(function(result) {
+      /**
+       * Create method to check if request satisfies a scope-set from required
+       * set of scope-sets.
+       * Return true, if successful and if unsuccessful it replies with
+       * error to `res`, unless `noReply` is `true`.
+       */
+      req.satisfies = function(scopesets, noReply) {
+        // If authentication failed
+        if (result.error) {
+          if (!noReply) {
+            res.status(401).json({
+              message: result.message
+            });
+          }
+          return false;
+        }
+
+        // If we're not given an array, we assume it's a set of parameters that
+        // must be used to parameterize the original scopesets
+        if (!(scopesets instanceof Array)) {
+          var params = scopesets;
+          scopesets = _.cloneDeep(entry.scopes, function(scope) {
+            if(typeof(scope) === 'string') {
+              return scope.replace(/<([^>]+)>/g, function(match, param) {
+                var value = params[param];
+                return value === undefined ? match : value;
+              });
+            }
+          });
+        }
+
+        // Test that we have scope intersection, and hence, is authorized
+        var retval = utils.scopeMatch(result.scopes, scopesets);
+        if (!retval && !noReply) {
+          res.status(401).json({
+            message:  "Authorization Failed",
+            error: {
+              info:       "None of the scope-sets was satisfied",
+              scopesets:  scopesets,
+            }
+          });
+        }
+        return retval;
+      };
+
+      // If authentication is deferred or satisfied, then we proceed
+      if (entry.deferAuth || req.satisfies(entry.scopes)) {
+        next();
+      }
+    }).catch(function(err) {
+      var incidentId = uuid.v4();
+      console.log("Internal error (incidentId: " + incidentId + ") " +
+                  err.stack);
+      return res.status(500).json({
+        message:      "Ask administrator to lookup incidentId in log-file",
+        incidentId:   incidentId
+      });
+    });
+  };
+};
+
 /**
  * Handle API end-point request
  *
@@ -891,7 +1048,7 @@ API.prototype.declare = function(options, handler) {
  *   nonceManager:        function(nonce, ts, cb) { // Check for replay attack
  *   clientLoader:        function(clientId) {      // Return promise for client
  *   authBaseUrl:         'http://auth.example.net' // BaseUrl for auth server
- *   credentials: {
+ *   credentials: {               // Omit to use remote signature validation
  *     clientId:          '...',  // TaskCluster clientId
  *     accessToken:       '...'   // Access token for clientId
  *     // Client must have the 'auth:credentials' scope.
@@ -914,19 +1071,35 @@ API.prototype.router = function(options) {
     inputLimit:           '10mb',
     allowedCORSOrigin:    '*',
     context:              {},
-    nonceManager:         nonceManager()
+    nonceManager:         nonceManager(),
+    signatureValidator:   makeRemoteSignatureValidator({
+      authBaseUrl:        options.authBaseUrl || AUTH_BASE_URL
+    })
   });
 
-  // Create clientLoader, if not provided
-  if (!options.clientLoader) {
-    assert(options.credentials, "Either credentials or clientLoader is required");
-    // Create clientLoader
-    options.clientLoader = clientLoader(_.defaults({
-      baseUrl:            options.authBaseUrl
-    }, options.credentials));
-    // Wrap in a clientCache
-    options.clientLoader = clientCache(options.clientLoader);
+  // Authentication strategy (default to remote authentication)
+  var authStrategy = function(entry) {
+    return remoteAuthentication({
+      signatureValidator: options.signatureValidator
+    }, entry);
+  };
+
+  // Create caching authentication strategy if possible
+  if (options.clientLoader || options.credentials) {
+    if (!options.clientLoader) {
+      // Create clientLoader
+      options.clientLoader = clientLoader(_.defaults({
+        baseUrl:            options.authBaseUrl
+      }, options.credentials));
+      // Wrap in a clientCache
+      options.clientLoader = clientCache(options.clientLoader);
+    }
+    // Create auth strategy
+    authStrategy = function(entry) {
+      return authenticate(options.nonceManager, options.clientLoader, entry);
+    };
   }
+
 
   // Create statistics reporter
   var reporter = null;
@@ -984,7 +1157,7 @@ API.prototype.router = function(options) {
 
     // Add authentication, schema validation and handler
     middleware.push(
-      authenticate(options.nonceManager, options.clientLoader, entry),
+      authStrategy(entry),
       parameterValidator(entry.params),
       schema(options.validator, entry),
       handle(entry.handler, options.context)
