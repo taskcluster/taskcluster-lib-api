@@ -907,7 +907,7 @@ var makeSignatureValidator = function(options) {
           }
           return accept({
             error:    true,
-            message:  message,
+            message:  '' + message,
             scopes:   []
           });
         }
@@ -918,7 +918,13 @@ var makeSignatureValidator = function(options) {
         });
       };
       if (req.authorization) {
-        hawk.server.authenticate(req, function(clientId, callback) {
+        hawk.server.authenticate({
+          method:           req.method,
+          url:              req.resource,
+          host:             req.host,
+          port:             req.port,
+          authorization:    req.authorization
+        }, function(clientId, callback) {
           var ext = undefined;
 
           // Parse authorization header for ext
@@ -948,7 +954,13 @@ var makeSignatureValidator = function(options) {
         }, authenticated);
       } else {
       // If there is no authorization header we'll attempt a login with bewit
-        hawk.uri.authenticate(req, function(clientId, callback) {
+        hawk.uri.authenticate({
+          method:           req.method,
+          url:              req.resource,
+          host:             req.host,
+          port:             req.port,
+          authorization:    req.authorization
+        }, function(clientId, callback) {
           var ext = undefined;
 
           // Get bewit string (stolen from hawk)
@@ -1054,10 +1066,10 @@ var remoteAuthentication = function(options, entry) {
 
     // Send input to auth server
     return Promise.resolve(options.signatureValidator({
-      method:           req.method,
-      url:              req.originalUrl,
+      method:           req.method.toLowerCase(),
+      resource:         req.originalUrl,
       host:             host.name,
-      port:             port,
+      port:             parseInt(port),
       authorization:    req.headers.authorization
     }, options));
   };
