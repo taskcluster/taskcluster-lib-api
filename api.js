@@ -724,6 +724,252 @@ authenticate.clientLoader = clientLoader;
 authenticate.nonceManager = nonceManager;
 
 
+
+
+/**
+ * Limit the client scopes and possibly use temporary keys.
+ *
+ * Takes a client object on the form: `{clientId, accessToken, scopes}`,
+ * applies scope restrictions, certificate validation and returns a clone if
+ * modified (otherwise it returns the original).
+ */
+var limitClientWithExt = function(client, ext) {
+  // Attempt to parse ext
+  try {
+    ext = JSON.parse(new Buffer(ext, 'base64').toString('utf-8'));
+  }
+  catch(err) {
+    debug("Failed to parse ext, leave error for signature validation!",
+          err, err.stack);
+    throw new Error("Failed to parse ext");
+  }
+
+  // Handle certificates
+  if (ext.certificate) {
+    var cert = ext.certificate;
+    // Validate the certificate
+    if (!(cert instanceof Object)) {
+      throw new Error("ext.certificate must be a JSON object");
+    }
+    if (cert.version !== 1) {
+      throw new Error("ext.certificate.version must be 1");
+    }
+    if (typeof(cert.seed) !== 'string') {
+      throw new Error('ext.certificate.seed must be a string');
+    }
+    if (cert.seed.length !== 44) {
+      throw new Error('ext.certificate.seed is too small');
+    }
+    if (typeof(cert.start) !== 'number') {
+      throw new Error('ext.certificate.start must be a number');
+    }
+    if (typeof(cert.expiry) !== 'number') {
+      throw new Error('ext.certificate.expiry must be a number');
+    }
+    if (!cert.scopes instanceof Array) {
+      throw new Error("ext.certificate.scopes must be an array");
+    }
+    if (cert.scopes.some(function(scope) {
+      return typeof(scope) !== 'string';
+    })) {
+      throw new Error("ext.certificate.scopes must be an array of strings");
+    }
+
+    // Check start and expiry
+    var now = new Date().getTime();
+    if (cert.start > now) {
+      throw new Error("ext.certificate.start > now");
+    }
+    if (cert.expiry < now) {
+      throw new Error("ext.certificate.expiry < now");
+    }
+    // Check max time between start and expiry
+    if (cert.expiry - cert.start > 31 * 24 * 60 * 60 * 1000) {
+      throw new Error("ext.certificate cannot last longer than 31 days!");
+    }
+
+    // Validate certificate scopes are subset of client
+    if (!utils.scopeMatch(client.scopes, scopesets)) {
+      throw new Error("ext.certificate issuer doesn't have sufficient scopes");
+    }
+
+    // Generate certificate signature
+    var signature = crypto.createHmac('sha256', client.accessToken)
+      .update([
+        'version:'  + '1',
+        'seed:'     + cert.seed,
+        'start:'    + cert.start,
+        'expiry:'   + cert.expiry,
+        'scopes:',
+      ].concat(cert.scopes).join('\n'))
+      .digest('base64');
+
+    // Validate signature
+    if (typeof(cert.signature) !== 'string' || cert.signature !== signature) {
+      throw new Error("ext.certificate.signature is not valid");
+    }
+
+    // Regenerate temporary key
+    var temporaryKey = crypto.createHmac('sha256', client.accessToken)
+      .update(cert.seed)
+      .digest('base64')
+      .replace(/\+/g, '-')  // Replace + with - (see RFC 4648, sec. 5)
+      .replace(/\//g, '_')  // Replace / with _ (see RFC 4648, sec. 5)
+      .replace(/=/g,  '');  // Drop '==' padding
+
+    // Update scopes and accessToken
+    client = {
+      clientId:     client.clientId,
+      accessToken:  temporaryKey,
+      scopes:       cert.scopes
+    };
+  }
+
+  // Handle scope restriction with authorizedScopes
+  if (ext.authorizedScopes) {
+    // Validate input format
+    if (!ext.authorizedScopes instanceof Array) {
+      throw new Error("ext.authorizedScopes must be an array");
+    }
+    if (ext.authorizedScopes.some(function(scope) {
+      return typeof(scope) !== 'string';
+    })) {
+      throw new Error("ext.authorizedScopes must be an array of strings");
+    }
+
+    // Validate authorizedScopes scopes are subset of client
+    if (!utils.scopeMatch(client.scopes, [ext.authorizedScopes])) {
+      throw new Error("ext.authorizedScopes oversteps your scopes");
+    }
+
+    // Update scopes on client object
+    client = {
+      clientId:     client.clientId,
+      accessToken:  client.accessToken,
+      scopes:       ext.authorizedScopes
+    };
+  }
+
+  // Return modified client
+  return client;
+};
+
+
+/**
+ * Make a function for the signature validation.
+ *
+ * options:
+ * {
+ *    clientLoader:   async (clientId) => {clientId, accessToken, scopes},
+ *    nonceManager:   nonceManager({size: ...})
+ * }
+ *
+ * The function returns takes an object:
+ *     {method, url, host, port, authorization}
+ * And return promise for an object on the form:
+ *     {error, message, scopes}
+ *
+ * The method returned by this function works as `signatureValidator` for
+ * `remoteAuthentication`.
+ */
+var makeSignatureValidator = function(options) {
+  assert(options.clientLoader instanceof Function,
+         "options.clientLoader must be a function");
+  var loadCredentials = function(clientId, ext, callback) {
+    Promise.resolve(options.clientLoader(clientId)).then(function(client) {
+      if (ext) {
+        // We check certificates and apply limitations to authorizedScopes here,
+        // if we've parsed ext incorrectly it could be a security issue, as
+        // scope elevation _might_ be possible. But it's a rather unlikely
+        // exploit... Besides we have plenty of obscurity to protect us here :)
+        client = limitClientWithExt(client, ext);
+      }
+      callback(null, {
+        clientToken:  client.clientId,
+        key:          client.accessToken,
+        algorithm:    'sha256',
+        scopes:       client.scopes
+      });
+    }).catch(callback);
+  };
+  return function(req) {
+    return new Promise(function(accept) {
+      var authenticated = function(err, credentials, artifacts) {
+        if (err) {
+          var message = "Unknown authorization error";
+          if (err.output && err.output.payload && err.output.payload.error) {
+            message = err.output.payload.error;
+            if (err.output.payload.message) {
+              message += ": " + err.output.payload.message;
+            }
+          } else if(err.message) {
+            message = err.message;
+          }
+          return accept({
+            error:    true,
+            message:  message,
+            scopes:   []
+          });
+        }
+        return accept({
+          error:    false,
+          message:  'authenticated',
+          scopes:   credentials.scopes
+        });
+      };
+      if (req.authorization) {
+        hawk.server.authenticate(req, function(clientId, callback) {
+          var ext = undefined;
+
+          // Parse authorization header for ext
+          var attrs = hawk.utils.parseAuthorizationHeader(
+            req.authorization
+          );
+          // Extra ext
+          if (!(attrs instanceof Error)) {
+            ext = attrs.ext;
+          }
+
+          // Get credentials with ext
+          loadCredentials(clientId, ext, callback);
+        }, {
+          // Not sure if JSON stringify is not deterministic by specification.
+          // I suspect not, so we'll postpone this till we're sure we want to do
+          // payload validation and how we want to do it.
+          //payload:      JSON.stringify(req.body),
+
+          // We found that clients often have time skew (particularly on OSX)
+          // since all our services require https we hardcode the allowed skew
+          // to a very high number (15 min) similar to AWS.
+          timestampSkewSec: 15 * 60,
+
+          // Provide nonce manager
+          nonceFunc:    options.nonceManager
+        }, authenticated);
+      } else {
+      // If there is no authorization header we'll attempt a login with bewit
+        hawk.uri.authenticate(req, function(clientId, callback) {
+          var ext = undefined;
+
+          // Get bewit string (stolen from hawk)
+          var parts = req.url.match(/^(\/.*)([\?&])bewit\=([^&$]*)(?:&(.+))?$/)
+          var bewitString = hoek.base64urlDecode(parts[3]);
+          if (!(bewitString instanceof Error)) {
+            // Split string as hawk does it
+            var parts = bewitString.split('\\');
+            if (parts.length === 4 && parts[3]) {
+              ext = parts[3];
+            }
+          }
+
+          // Get credentials with ext
+          loadCredentials(clientId, ext, callback);
+        }, {}, authenticated);
+      }
+    });
+  };
+};
+
 /**
  * Make a function for the remote signature validation.
  *
@@ -770,6 +1016,8 @@ var makeRemoteSignatureValidator = function(options) {
  * where `data` is the form: {method, url, host, port, authorization}.
  */
 var remoteAuthentication = function(options, entry) {
+  assert(options.signatureValidator instanceof Function,
+         "Expected options.signatureValidator to be a function!");
   // Returns promise for object on the form: {error, message, scopes}
   var authenticate = function(req) {
     // Check that we're not using two authentication schemes, we could
@@ -805,13 +1053,13 @@ var remoteAuthentication = function(options, entry) {
     }
 
     // Send input to auth server
-    return validateSignatureRemotely({
+    return Promise.resolve(options.signatureValidator({
       method:           req.method,
       url:              req.originalUrl,
       host:             host.name,
       port:             port,
       authorization:    req.headers.authorization
-    }, options);
+    }, options));
   };
 
   return function(req, res, next) {
@@ -1335,3 +1583,4 @@ API.authenticate  = authenticate;
 API.schema        = schema;
 API.handle        = handle;
 API.stability     = stability;
+API.makeSignatureValidator = makeSignatureValidator;
