@@ -1110,7 +1110,7 @@ var remoteAuthentication = function(options, entry) {
       };
 
       // If authentication is deferred or satisfied, then we proceed
-      if (entry.deferAuth || req.satisfies(entry.scopes)) {
+      if (!entry.scopes || entry.deferAuth || req.satisfies(entry.scopes)) {
         next();
       }
     }).catch(function(err) {
