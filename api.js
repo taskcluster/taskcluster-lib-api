@@ -955,7 +955,7 @@ var createSignatureValidator = function(options) {
       } else {
       // If there is no authorization header we'll attempt a login with bewit
         hawk.uri.authenticate({
-          method:           req.method,
+          method:           req.method.toUpperCase(),
           url:              req.resource,
           host:             req.host,
           port:             req.port,
@@ -964,7 +964,9 @@ var createSignatureValidator = function(options) {
           var ext = undefined;
 
           // Get bewit string (stolen from hawk)
-          var parts = req.url.match(/^(\/.*)([\?&])bewit\=([^&$]*)(?:&(.+))?$/)
+          var parts = req.resource.match(
+            /^(\/.*)([\?&])bewit\=([^&$]*)(?:&(.+))?$/
+          );
           var bewitString = hoek.base64urlDecode(parts[3]);
           if (!(bewitString instanceof Error)) {
             // Split string as hawk does it
