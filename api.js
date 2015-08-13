@@ -872,7 +872,7 @@ var limitClientWithExt = function(client, ext) {
  * The method returned by this function works as `signatureValidator` for
  * `remoteAuthentication`.
  */
-var makeSignatureValidator = function(options) {
+var createSignatureValidator = function(options) {
   assert(options.clientLoader instanceof Function,
          "options.clientLoader must be a function");
   var loadCredentials = function(clientId, ext, callback) {
@@ -998,7 +998,7 @@ var makeSignatureValidator = function(options) {
  * The method returned by this function works as `signatureValidator` for
  * `remoteAuthentication`.
  */
-var makeRemoteSignatureValidator = function(options) {
+var createRemoteSignatureValidator = function(options) {
   assert(options.authBaseUrl, "options.authBaseUrl is required");
   return function(data) {
     return request
@@ -1332,7 +1332,7 @@ API.prototype.router = function(options) {
     allowedCORSOrigin:    '*',
     context:              {},
     nonceManager:         nonceManager(),
-    signatureValidator:   makeRemoteSignatureValidator({
+    signatureValidator:   createRemoteSignatureValidator({
       authBaseUrl:        options.authBaseUrl || AUTH_BASE_URL
     })
   });
@@ -1595,4 +1595,4 @@ API.authenticate  = authenticate;
 API.schema        = schema;
 API.handle        = handle;
 API.stability     = stability;
-API.makeSignatureValidator = makeSignatureValidator;
+API.createSignatureValidator = createSignatureValidator;
