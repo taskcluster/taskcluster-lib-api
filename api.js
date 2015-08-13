@@ -789,7 +789,7 @@ var limitClientWithExt = function(client, ext) {
     }
 
     // Validate certificate scopes are subset of client
-    if (!utils.scopeMatch(client.scopes, scopesets)) {
+    if (!utils.scopeMatch(client.scopes, [cert.scopes])) {
       throw new Error("ext.certificate issuer doesn't have sufficient scopes");
     }
 
