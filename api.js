@@ -1011,7 +1011,7 @@ var createRemoteSignatureValidator = function(options) {
       maxSockets: 50
     });
   } else {
-    agent = new https.Agent({
+    agent = new http.Agent({
       keepAlive:  true,
       maxSockets: 50
     });
