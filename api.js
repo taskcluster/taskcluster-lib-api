@@ -1021,8 +1021,7 @@ var createRemoteSignatureValidator = function(options) {
       .post(options.authBaseUrl + '/authenticate-hawk')
       .agent(agent)
       .type('json')
-      //TODO: Make sure that we use a HTTP agent for this!!!
-      //      Just use TC-client when we have auth.tc.net deployed...
+      //TODO: Use TC-client when we have auth.tc.net deployed...
       //      So we get both retries and decent agent implementation
       .send(data)
       .end()
