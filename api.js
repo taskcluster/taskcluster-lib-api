@@ -868,8 +868,8 @@ var limitClientWithExt = function(client, ext) {
  *
  * The function returns takes an object:
  *     {method, url, host, port, authorization}
- * And return promise for an object on the form:
- *     {error, message, scopes}
+ * And return promise for an object on one of the forms:
+ *     {message}, {scheme, scopes}, {schema, scopes, hash}
  *
  * The method returned by this function works as `signatureValidator` for
  * `remoteAuthentication`.
@@ -897,6 +897,7 @@ var createSignatureValidator = function(options) {
   return function(req) {
     return new Promise(function(accept) {
       var authenticated = function(err, credentials, artifacts) {
+        var result = null;
         if (err) {
           var message = "Unknown authorization error";
           if (err.output && err.output.payload && err.output.payload.error) {
@@ -907,17 +908,19 @@ var createSignatureValidator = function(options) {
           } else if(err.message) {
             message = err.message;
           }
-          return accept({
-            error:    true,
-            message:  '' + message,
-            scopes:   []
-          });
+          result = {
+            message:  '' + message
+          };
+        } else {
+          result = {
+            scheme:   'hawk',
+            scopes:   credentials.scopes
+          };
+          if (artifacts.hash) {
+            result.hash = artifacts.hash;
+          }
         }
-        return accept({
-          error:    false,
-          message:  'authenticated',
-          scopes:   credentials.scopes
-        });
+        return accept(result);
       };
       if (req.authorization) {
         hawk.server.authenticate({
@@ -996,8 +999,8 @@ var createSignatureValidator = function(options) {
  *
  * The function returns takes an object:
  *     {method, url, host, port, authorization}
- * And return promise for an object on the form:
- *     {error, message, scopes}
+ * And return promise for an object on one of the forms:
+ *     {message}, {scheme, scopes}, {schema, scopes, hash}
  *
  * The method returned by this function works as `signatureValidator` for
  * `remoteAuthentication`.
@@ -1041,7 +1044,8 @@ var createRemoteSignatureValidator = function(options) {
  *
  * options:
  * {
- *    signatureValidator:   async (data) => {error, message, scopes}
+ *    signatureValidator:   async (data) => {message}, {scheme, scopes}, or
+ *                                          {schema, scopes, hash}
  * }
  *
  * where `data` is the form: {method, url, host, port, authorization}.
@@ -1059,19 +1063,17 @@ var remoteAuthentication = function(options, entry) {
     if (req.headers && req.headers.authorization &&
         req.query && req.query.bewit) {
       return Promise.resolve({
-        error:    true,
         message:  "Cannot use two authentication schemes at once " +
                   "this request has both bewit in querystring and " +
                   "and 'authorization' header"
       });
     }
 
-    // If not authentication is provided, we just return valid with zero scopes
+    // If no authentication is provided, we just return valid with zero scopes
     if ((!req.query || !req.query.bewit) &&
         (!req.headers || !req.headers.authorization)) {
       return Promise.resolve({
-        error:  true,
-        scopes: []
+        message: "No authentication provided"
       });
     }
 
@@ -1103,13 +1105,32 @@ var remoteAuthentication = function(options, entry) {
        */
       req.satisfies = function(scopesets, noReply) {
         // If authentication failed
-        if (result.error) {
+        if (result.message) {
           if (!noReply) {
             res.status(401).json({
               message: result.message
             });
           }
           return false;
+        }
+
+        // Validate request hash if one is provided
+        if (typeof(result.hash) === 'string' && result.scheme === 'hawk') {
+          var hash = hawk.crypto.calculatePayloadHash(
+            new Buffer(req.text, 'utf-8'),
+            'sha256',
+            req.headers['content-type']
+          );
+          if (result.hash !== hash) {
+            if (!noReply) {
+              res.status(401).json({
+                message: "Invalid payload hash"
+              });
+            }
+            return false;
+          }
+          // Don't validate hash on subsequent calls to satisfies
+          result.hash = undefined;
         }
 
         // If we're not given an array, we assume it's a set of parameters that
@@ -1390,10 +1411,29 @@ API.prototype.router = function(options) {
   // Create router
   var router = express.Router();
 
-  // Use JSON middleware
-  router.use(bodyParser.json({
-    limit:                options.inputLimit
-  }));
+  // Use JSON middleware, and add hack to store text as req.text
+  router.use(bodyParser.text({
+    limit:          options.inputLimit,
+    type:           'application/json'
+  }), function(req, res, next) {
+    if (typeof(req.body) === 'string' && req.body !== '') {
+      req.text = req.body;
+      try {
+        req.body = JSON.parse(req.text);
+        if (!(req.body instanceof Object)) {
+          throw new Error("Must be an object or array");
+        }
+      } catch (err) {
+        return res.status(400).json({
+          message: "Invalid JSON input: " + err.message
+        });
+      }
+    } else {
+      req.text = '';
+      req.body = {};
+    }
+    next();
+  });
 
   // Allow CORS requests to the API
   if (options.allowedCORSOrigin) {
