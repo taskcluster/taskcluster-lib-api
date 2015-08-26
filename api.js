@@ -866,10 +866,12 @@ var limitClientWithExt = function(client, ext) {
  *    nonceManager:   nonceManager({size: ...})
  * }
  *
- * The function returns takes an object:
- *     {method, url, host, port, authorization}
- * And return promise for an object on one of the forms:
- *     {message}, {scheme, scopes}, {schema, scopes, hash}
+ * The function returned takes an object:
+ *     {method, resource, host, port, authorization}
+ * And returns promise for an object on one of the forms:
+ *     {status: 'auth-failed', message},
+ *     {status: 'auth-success', scheme, scopes}, or,
+ *     {status: 'auth-success', scheme, scopes, hash}
  *
  * The method returned by this function works as `signatureValidator` for
  * `remoteAuthentication`.
@@ -909,10 +911,12 @@ var createSignatureValidator = function(options) {
             message = err.message;
           }
           result = {
+            status:   'auth-failed',
             message:  '' + message
           };
         } else {
           result = {
+            status:   'auth-success',
             scheme:   'hawk',
             scopes:   credentials.scopes
           };
@@ -924,7 +928,7 @@ var createSignatureValidator = function(options) {
       };
       if (req.authorization) {
         hawk.server.authenticate({
-          method:           req.method,
+          method:           req.method.toUpperCase(),
           url:              req.resource,
           host:             req.host,
           port:             req.port,
@@ -963,8 +967,7 @@ var createSignatureValidator = function(options) {
           method:           req.method.toUpperCase(),
           url:              req.resource,
           host:             req.host,
-          port:             req.port,
-          authorization:    req.authorization
+          port:             req.port
         }, function(clientId, callback) {
           var ext = undefined;
 
@@ -998,9 +1001,11 @@ var createSignatureValidator = function(options) {
  * }
  *
  * The function returns takes an object:
- *     {method, url, host, port, authorization}
+ *     {method, resource, host, port, authorization}
  * And return promise for an object on one of the forms:
- *     {message}, {scheme, scopes}, {schema, scopes, hash}
+ *     {status: 'auth-failed', message},
+ *     {status: 'auth-success', scheme, scopes}, or,
+ *     {status: 'auth-success', scheme, scopes, hash}
  *
  * The method returned by this function works as `signatureValidator` for
  * `remoteAuthentication`.
@@ -1040,15 +1045,50 @@ var createRemoteSignatureValidator = function(options) {
 };
 
 /**
- * Validate signature using remote API end-point
+ * Authenticate client using remote API end-point and validate that he satisfies
+ * one of the sets of scopes required. Skips validation if `options.scopes` is
+ * `undefined`.
  *
  * options:
  * {
  *    signatureValidator:   async (data) => {message}, {scheme, scopes}, or
- *                                          {schema, scopes, hash}
- * }
+ *                                          {scheme, scopes, hash}
+ * },
  *
  * where `data` is the form: {method, url, host, port, authorization}.
+ *
+ * entry:
+ * {
+ *   scopes:  [
+ *     'service:method:action:<resource>'
+ *     ['admin', 'superuser'],
+ *   ]
+ *   deferAuth:   false // defaults to false
+ * }
+ *
+ * Check that the client is authenticated and has scope patterns that satisfies
+ * either `'service:method:action:<resource>'` or both `'admin'` and
+ * `'superuser'`. If the client has pattern "service:*" this will match any
+ * scope that starts with "service:" as is the case in the example above.
+ *
+ * This also adds a method `req.satisfies(scopes, noReply)` to the `request`
+ * object. Calling this method with a set of scopes-sets return `true` if the
+ * client satisfies one of the scopes-sets. If the client does not satisfy one
+ * of the scopes-sets it returns `false` and sends an error message unless
+ * `noReply = true`.
+ *
+ * If `deferAuth` is set to `true`, then authentication will be postponed to
+ * the first invocation of `req.satisfies`. Further note, that if
+ * `req.satisfies` is called with an object as first argument (instead of a
+ * list), then it'll assume this object is a mapping from scope parameters to
+ * values. e.g. `req.satisfies({resource: "my-resource"})` will check that
+ * the client satisfies `'service:method:action:my-resource'`.
+ * (This is useful when working with dynamic scope strings).
+ *
+ * Remark `deferAuth` will not perform authorization unless, `req.satisfies({})`
+ * is called either without arguments or with an object as first argument.
+ *
+ * Reports 401 if authentication fails.
  */
 var remoteAuthentication = function(options, entry) {
   assert(options.signatureValidator instanceof Function,
@@ -1073,7 +1113,9 @@ var remoteAuthentication = function(options, entry) {
     if ((!req.query || !req.query.bewit) &&
         (!req.headers || !req.headers.authorization)) {
       return Promise.resolve({
-        message: "No authentication provided"
+        status: 'no-auth',
+        scheme: 'none',
+        scopes: []
       });
     }
 
@@ -1085,7 +1127,7 @@ var remoteAuthentication = function(options, entry) {
       port = parseInt(req.headers['x-forwarded-port']);
     }
 
-    // Send input to auth server
+    // Send input to signatureValidator (auth server or local validator)
     return Promise.resolve(options.signatureValidator({
       method:           req.method.toLowerCase(),
       resource:         req.originalUrl,
@@ -1105,7 +1147,7 @@ var remoteAuthentication = function(options, entry) {
        */
       req.satisfies = function(scopesets, noReply) {
         // If authentication failed
-        if (result.message) {
+        if (result.status === 'auth-failed') {
           if (!noReply) {
             res.status(401).json({
               message: result.message
@@ -1155,6 +1197,7 @@ var remoteAuthentication = function(options, entry) {
             error: {
               info:       "None of the scope-sets was satisfied",
               scopesets:  scopesets,
+              scopes:     result.scopes
             }
           });
         }
@@ -1394,12 +1437,11 @@ API.prototype.router = function(options) {
       // Wrap in a clientCache
       options.clientLoader = clientCache(options.clientLoader);
     }
-    // Create auth strategy
+    // Replace auth strategy
     authStrategy = function(entry) {
       return authenticate(options.nonceManager, options.clientLoader, entry);
     };
   }
-
 
   // Create statistics reporter
   var reporter = null;
