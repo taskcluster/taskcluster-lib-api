@@ -21,6 +21,7 @@ var hoek          = require('hoek');
 var series        = require('./lib/series');
 var http          = require('http');
 var https         = require('https');
+var cryptiles     = require('cryptiles');
 
 // Default baseUrl for authentication server
 var AUTH_BASE_URL = 'https://auth.taskcluster.net/v1';
@@ -260,7 +261,8 @@ Client.prototype.limit = function(ext) {
       .digest('base64');
 
     // Validate signature
-    if (typeof(cert.signature) !== 'string' || cert.signature !== signature) {
+    if (typeof(cert.signature) !== 'string' ||
+        !cryptiles.fixedTimeComparison(cert.signature, signature)){
       throw new Error("ext.certificate.signature is not valid");
     }
 
@@ -807,7 +809,8 @@ var limitClientWithExt = function(client, ext) {
       .digest('base64');
 
     // Validate signature
-    if (typeof(cert.signature) !== 'string' || cert.signature !== signature) {
+    if (typeof(cert.signature) !== 'string' ||
+        !cryptiles.fixedTimeComparison(cert.signature, signature)) {
       throw new Error("ext.certificate.signature is not valid");
     }
 
