@@ -152,6 +152,8 @@ var Client = function(options) {
   assert(options.clientId,                "ClientId is required");
   assert(options.accessToken,             "AccessToken is required");
   assert(options.scopes instanceof Array, "Scopes must be an array");
+  assert(options.scopes.every(utils.validScope),
+                "Scopes must contain only printable ASCII or space");
   if (typeof(options.expires) == 'string') {
     this.expires = new Date(options.expires);
   } else {
@@ -243,6 +245,11 @@ Client.prototype.limit = function(ext) {
     // Check max time between start and expiry
     if (cert.expiry - cert.start > 31 * 24 * 60 * 60 * 1000) {
       throw new Error("ext.certificate cannot last longer than 31 days!");
+    }
+
+    // Check scope validity
+    if (!cert.scopes.every(utils.validScope)) {
+      throw new Error("ext.certificate has invalid scopes");
     }
 
     // Validate certificate scopes are subset of client
@@ -793,6 +800,11 @@ var limitClientWithExt = function(client, ext) {
       throw new Error("ext.certificate cannot last longer than 31 days!");
     }
 
+    // Check scope validity
+    if (!cert.scopes.every(utils.validScope)) {
+      throw new Error("ext.certificate has invalid scopes");
+    }
+
     // Validate certificate scopes are subset of client
     if (!utils.scopeMatch(client.scopes, [cert.scopes])) {
       throw new Error("ext.certificate issuer doesn't have sufficient scopes");
@@ -837,10 +849,8 @@ var limitClientWithExt = function(client, ext) {
     if (!ext.authorizedScopes instanceof Array) {
       throw new Error("ext.authorizedScopes must be an array");
     }
-    if (ext.authorizedScopes.some(function(scope) {
-      return typeof(scope) !== 'string';
-    })) {
-      throw new Error("ext.authorizedScopes must be an array of strings");
+    if (!ext.authorizedScopes.every(utils.validScope)) {
+      throw new Error("ext.authorizedScopes must be an array of valid scopes");
     }
 
     // Validate authorizedScopes scopes are subset of client
