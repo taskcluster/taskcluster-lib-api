@@ -228,10 +228,8 @@ Client.prototype.limit = function(ext) {
     if (!cert.scopes instanceof Array) {
       throw new Error("ext.certificate.scopes must be an array");
     }
-    if (cert.scopes.some(function(scope) {
-      return typeof(scope) !== 'string';
-    })) {
-      throw new Error("ext.certificate.scopes must be an array of strings");
+    if (!cert.scopes.every(utils.validScope)) {
+      throw new Error("ext.certificate.scopes must be an array of valid scopes");
     }
 
     // Check start and expiry
@@ -245,11 +243,6 @@ Client.prototype.limit = function(ext) {
     // Check max time between start and expiry
     if (cert.expiry - cert.start > 31 * 24 * 60 * 60 * 1000) {
       throw new Error("ext.certificate cannot last longer than 31 days!");
-    }
-
-    // Check scope validity
-    if (!cert.scopes.every(utils.validScope)) {
-      throw new Error("ext.certificate has invalid scopes");
     }
 
     // Validate certificate scopes are subset of client
@@ -781,10 +774,8 @@ var limitClientWithExt = function(client, ext) {
     if (!cert.scopes instanceof Array) {
       throw new Error("ext.certificate.scopes must be an array");
     }
-    if (cert.scopes.some(function(scope) {
-      return typeof(scope) !== 'string';
-    })) {
-      throw new Error("ext.certificate.scopes must be an array of strings");
+    if (!cert.scopes.every(utils.validScope)) {
+      throw new Error("ext.certificate.scopes must be an array of valid scopes");
     }
 
     // Check start and expiry
@@ -801,9 +792,6 @@ var limitClientWithExt = function(client, ext) {
     }
 
     // Check scope validity
-    if (!cert.scopes.every(utils.validScope)) {
-      throw new Error("ext.certificate has invalid scopes");
-    }
 
     // Validate certificate scopes are subset of client
     if (!utils.scopeMatch(client.scopes, [cert.scopes])) {
