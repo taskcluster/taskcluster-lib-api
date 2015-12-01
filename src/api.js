@@ -102,6 +102,12 @@ var schema = function(validator, options) {
   return function(req, res, next) {
     // If input schema is defined we need to validate the input
     if (options.input !== undefined && !options.skipInputValidation) {
+      if (req.headers['content-type'] !== 'application/json') {
+        return res.status(400).json({
+          message: "Payload must be JSON with content-type: application/json " +
+                   "got content-type: " + (req.headers['content-type'] || null),
+        });
+      }
       var errors = validator.check(req.body, options.input);
       if (errors) {
         debug("Request payload for %s didn't follow schema %s",
