@@ -24,6 +24,7 @@ var https         = require('https');
 var cryptiles     = require('cryptiles');
 var taskcluster   = require('taskcluster-client');
 var Validator     = require('schema-validator-publisher').Validator;
+var errors        = require('./errors');
 
 // Default baseUrl for authentication server
 var AUTH_BASE_URL = 'https://auth.taskcluster.net/v1';
@@ -1295,7 +1296,10 @@ var handle = function(handler, context) {
  *     param1:  /.../,                // Reg-exp pattern
  *     param2(val) { return "..." }   // Function, returns message if invalid
  *   },
- *   context:       []                // List of required context properties
+ *   context:       [],               // List of required context properties
+ *   errorCodes: {
+ *     MyError:     400,              // Mapping from error code to HTTP status
+ *   }
  * }
  *
  * The API object will only modified by declarations, when `mount` or `publish`
@@ -1306,10 +1310,13 @@ var API = function(options) {
   ['title', 'description'].forEach(function(key) {
     assert(options[key], "Option '" + key + "' must be provided");
   });
-  this._options = _.defaults({}, options, {
+  this._options = _.defaults({
+    errorCodes: _.defaults({}, options.errorCodes || {}, errors.ERROR_CODES),
+  }, options, {
     schemaPrefix:   '',
     params:         {},
     context:        [],
+    errorCodes:     {},
   });
   this._entries = [];
 };
@@ -1446,6 +1453,7 @@ API.prototype.declare = function(options, handler) {
  *     accessToken:       '...'   // Access token for clientId
  *     // Client must have the 'auth:credentials' scope.
  *   },
+ *   raven:               null,   // raven.Client instance for error reporting
  *   component:           'queue',      // Name of the component in stats
  *   drain:               new Influx()  // drain for statistics
  * }
@@ -1476,7 +1484,8 @@ API.prototype.router = function(options) {
     nonceManager:         nonceManager(),
     signatureValidator:   createRemoteSignatureValidator({
       authBaseUrl:        options.authBaseUrl || AUTH_BASE_URL
-    })
+    }),
+    raven:                null,
   });
 
   // Validate context
@@ -1518,30 +1527,6 @@ API.prototype.router = function(options) {
   // Create router
   var router = express.Router();
 
-  // Use JSON middleware, and add hack to store text as req.text
-  router.use(bodyParser.text({
-    limit:          options.inputLimit,
-    type:           'application/json'
-  }), function(req, res, next) {
-    if (typeof(req.body) === 'string' && req.body !== '') {
-      req.text = req.body;
-      try {
-        req.body = JSON.parse(req.text);
-        if (!(req.body instanceof Object)) {
-          throw new Error("Must be an object or array");
-        }
-      } catch (err) {
-        return res.status(400).json({
-          message: "Invalid JSON input: " + err.message
-        });
-      }
-    } else {
-      req.text = '';
-      req.body = {};
-    }
-    next();
-  });
-
   // Allow CORS requests to the API
   if (options.allowedCORSOrigin) {
     router.use(function(req, res, next) {
@@ -1569,7 +1554,7 @@ API.prototype.router = function(options) {
   }
 
   // Add entries to router
-  this._entries.forEach(function(entry) {
+  this._entries.forEach(entry => {
     // Route pattern
     var middleware = [entry.route];
 
@@ -1583,6 +1568,33 @@ API.prototype.router = function(options) {
 
     // Add authentication, schema validation and handler
     middleware.push(
+      errors.BuildReportErrorMethod(
+        entry.name, this._options.errorCodes, options.raven
+      ),
+      bodyParser.text({
+        limit:          options.inputLimit,
+        type:           'application/json'
+      }), function(req, res, next) {
+        // Use JSON middleware, and add hack to store text as req.text
+        if (typeof(req.body) === 'string' && req.body !== '') {
+          req.text = req.body;
+          try {
+            req.body = JSON.parse(req.text);
+            if (!(req.body instanceof Object)) {
+              throw new Error("Must be an object or array");
+            }
+          } catch (err) {
+            return res.reportError(
+              'MalformedPayload', "Failed to parse JSON: {{errMsg}}", {
+                errMsg: err.message
+            });
+          }
+        } else {
+          req.text = '';
+          req.body = {};
+        }
+        next();
+      },
       authStrategy(entry),
       parameterValidator(entry.params),
       queryValidator(entry.query),
