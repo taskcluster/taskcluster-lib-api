@@ -1453,7 +1453,7 @@ API.prototype.declare = function(options, handler) {
  *     accessToken:       '...'   // Access token for clientId
  *     // Client must have the 'auth:credentials' scope.
  *   },
- *   raven:               null,   // raven.Client instance for error reporting
+ *   raven:               null,   // optional raven.Client for error reporting
  *   component:           'queue',      // Name of the component in stats
  *   drain:               new Influx()  // drain for statistics
  * }
