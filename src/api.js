@@ -1318,6 +1318,9 @@ var API = function(options) {
     context:        [],
     errorCodes:     {},
   });
+  this._options.errorCodes.map(c =>
+    assert(/[A-Z][A-Za-z0-9]*/.test(c), 'Invalid error code: ' + c);
+  );
   this._entries = [];
 };
 
