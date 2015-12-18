@@ -1,7 +1,9 @@
 let uuid = require('uuid');
+let debug = require('debug')('base:api');
 
 const ERROR_CODES = {
   MalformedPayload:         400,  // Only for JSON.parse() errors
+  InvalidRequestArguments:  400,  // Only for query and param validation errors
   InputValidationError:     400,  // Only for JSON schema errors
   AuthorizationFailed:      401,  // Only if authentication failed
   InsufficientScopes:       403,  // Only if request had insufficient scopes
@@ -72,6 +74,10 @@ let BuildReportErrorMethod = (method, errorCodes, ravent = null) => {
         'InternalServerError',
         'Internal Server Error, incidentId: ' + incidentId,
         {incidentId}
+      );
+      debug(
+        "Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s",
+        req.url, err, err, incidentId, err.stack
       );
       if (raven) {
         err.incidentId = incidentId;

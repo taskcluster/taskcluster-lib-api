@@ -73,9 +73,11 @@ var parameterValidator = function(options) {
       }
     });
     if (errors.length > 0) {
-      return res.status(400).json({
-        'message':  "Invalid URL patterns:\n" + errors.join('\n'),
-      });
+      return res.reportError(
+        'InvalidRequestArguments',
+        "Invalid URL patterns:\n" + errors.join('\n'),
+        {errors}
+      );
     }
     return next();
   };
@@ -104,20 +106,25 @@ var schema = function(validator, options) {
     // If input schema is defined we need to validate the input
     if (options.input !== undefined && !options.skipInputValidation) {
       if (req.headers['content-type'] !== 'application/json') {
-        return res.status(400).json({
-          message: "Payload must be JSON with content-type: application/json " +
-                   "got content-type: " + (req.headers['content-type'] || null),
+        return res.reportError(
+          'MalformedPayload',
+          "Payload must be JSON with content-type: application/json " +
+          "got content-type: {{contentType}}", {
+          contentType: (req.headers['content-type'] || null),
         });
       }
       var errors = validator.check(req.body, options.input);
       if (errors) {
         debug("Request payload for %s didn't follow schema %s",
               req.url, options.input);
-        res.status(400).json({
-          'message':  "Request payload must follow the schema: " + options.input,
-          'error':    errors
+        return res.reportError(
+          'InputValidationError',
+          "Request payload must follow the schema: {{schema}}\n" +
+          "Errors: {{errors}}", {
+          errors,
+          schema: options.input,
+          payload: req.body
         });
-        return;
       }
     }
     // Add a reply method sending JSON replies, this will always reply with HTTP
@@ -128,12 +135,14 @@ var schema = function(validator, options) {
       if(options.output !== undefined && !options.skipOutputValidation) {
         var errors = validator.check(json, options.output);
         if (errors) {
-          res.status(500).json({
-            'message':  "Internal Server Error",
-          });
           debug("Reply for %s didn't match schema: %s got errors: %j from output: %j",
                 req.url, options.output, errors, json);
-          return;
+          let err = new Error('Output schema validation of ' + options.output);
+          err.schema = options.output;
+          err.url = req.url;
+          err.errors = errors;
+          err.payload = json;
+          return res.reportInternalError(err);
         }
       }
       // If JSON was valid or validation was skipped then reply with 200 OK
@@ -185,9 +194,11 @@ let queryValidator = function(options = {}) {
       }
     });
     if (errors.length > 0) {
-      return res.status(400).json({
-        message: errors.join('\n'),
-      });
+      return res.reportError(
+        'InvalidRequestArguments',
+        errors.join('\n'),
+        {errors}
+      );
     }
     return next();
   };
@@ -1185,9 +1196,7 @@ var remoteAuthentication = function(options, entry) {
         // If authentication failed
         if (result.status === 'auth-failed') {
           if (!noReply) {
-            res.status(401).json({
-              message: result.message
-            });
+            res.reportError('AuthorizationFailed', result.message, result);
           }
           return false;
         }
@@ -1199,11 +1208,17 @@ var remoteAuthentication = function(options, entry) {
             'sha256',
             req.headers['content-type']
           );
-          if (result.hash !== hash) {
+          if (!cryptiles.fixedTimeComparison(result.hash, hash)) {
             if (!noReply) {
-              res.status(401).json({
-                message: "Invalid payload hash"
-              });
+              res.reportError(
+                'AuthorizationFailed',
+                "Invalid payload hash: {{hash}}\n" +
+                "Computed payload hash: {{computedHash}}\n" +
+                "This happens when your request carries a signed hash of the " +
+                "payload and the hash doesn't match the hash we've computed " +
+                "on the server-side.",
+                _.defaults({computedHash: hash}, result)
+              );
             }
             return false;
           }
@@ -1228,14 +1243,22 @@ var remoteAuthentication = function(options, entry) {
         // Test that we have scope intersection, and hence, is authorized
         var retval = utils.scopeMatch(result.scopes, scopesets);
         if (!retval && !noReply) {
-          res.status(401).json({
-            message:  "Authorization Failed",
-            error: {
-              info:       "None of the scope-sets was satisfied",
-              scopesets:  scopesets,
-              scopes:     result.scopes
-            }
-          });
+          res.reportError('InsufficientScopes', [
+            "You do not have sufficient scopes. This request requires you",
+            "to have one of the following sets of scopes:",
+            "{{scopesets}}",
+            "",
+            "You only have the scopes:",
+            "{{scopes}}",
+            "",
+            "In order words you are missing scopes from one of the options:"
+          ].concat(scopesets.map((set, index) => {
+            let missing = set.filter(scope => {
+              return !utils.scopeMatch(result.scopes, [[scope]]);
+            });
+            return ' * Option ' + index + ':\n    - "' +
+                   missing.join('", and\n    - "') + '"';
+          })).join('\n'),  {scopesets, scopes: result.scopes});
         }
         return retval;
       };
@@ -1245,13 +1268,7 @@ var remoteAuthentication = function(options, entry) {
         next();
       }
     }).catch(function(err) {
-      var incidentId = uuid.v4();
-      console.log("Internal error (incidentId: " + incidentId + ") " +
-                  err.stack);
-      return res.status(500).json({
-        message:      "Ask administrator to lookup incidentId in log-file",
-        incidentId:   incidentId
-      });
+      return res.reportInternalError(err);
     });
   };
 };
@@ -1268,18 +1285,7 @@ var handle = function(handler, context) {
     Promise.resolve(null).then(function() {
       return handler.call(context, req, res);
     }).catch(function(err) {
-      var incidentId = uuid.v4();
-      debug(
-        "Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s",
-        req.url, err, err, incidentId, err.stack
-      );
-      res.status(500).json({
-        message:        "Internal Server Error",
-        error: {
-          info:         "Ask administrator to lookup incidentId in log-file",
-          incidentId:   incidentId
-        }
-      });
+      return res.reportInternalError(err);
     });
   };
 };
@@ -1318,9 +1324,10 @@ var API = function(options) {
     context:        [],
     errorCodes:     {},
   });
-  this._options.errorCodes.map(c =>
-    assert(/[A-Z][A-Za-z0-9]*/.test(c), 'Invalid error code: ' + c);
-  );
+  _.forEach(this._options.errorCodes, (value, key) => {
+    assert(/[A-Z][A-Za-z0-9]*/.test(key), 'Invalid error code: ' + key)
+    assert(typeof(value) === 'number', 'Expected HTTP status code to be int');
+  });
   this._entries = [];
 };
 
