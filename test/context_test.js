@@ -1,5 +1,6 @@
 suite("API (context)", function() {
-  var base            = require('taskcluster-base');
+  var makeValidator   = require('schema-validator-publisher');
+  var makeApp         = require('taskcluster-lib-app');
   var subject         = require('../');
   var assert          = require('assert');
   var Promise         = require('promise');
@@ -24,7 +25,7 @@ suite("API (context)", function() {
     });
 
     var value = slugid.v4();
-    let validator = await base.validator();
+    let validator = await makeValidator();
     var router = api.router({
       validator:  validator,
       context: {
@@ -32,7 +33,7 @@ suite("API (context)", function() {
       }
     });
 
-    var app = base.app({
+    var app = makeApp({
       port:       60872,
       env:        'development',
       forceSSL:   false,
@@ -66,7 +67,7 @@ suite("API (context)", function() {
     });
 
     var value = slugid.v4();
-    let validator = await base.validator()
+    let validator = await makeValidator()
     try {
       api.router({
         validator:  validator,
@@ -89,7 +90,7 @@ suite("API (context)", function() {
     });
 
     var value = slugid.v4();
-    let validator = await base.validator();
+    let validator = await makeValidator();
     api.router({
       validator:  validator,
       context: {

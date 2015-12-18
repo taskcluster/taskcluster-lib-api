@@ -4,7 +4,7 @@ suite("api/validate", function() {
   var assert          = require('assert');
   var Promise         = require('promise');
   var mockAuthServer  = require('taskcluster-lib-testing/.test/mockauthserver');
-  var base            = require('taskcluster-base');
+  var makeValidator   = require('schema-validator-publisher');
   var subject         = require('../');
   var express         = require('express');
   var path            = require('path');
@@ -93,7 +93,7 @@ suite("api/validate", function() {
       _mockAuthServer = server;
     }).then(function() {
       // Create validator
-      var validatorCreated = base.validator({
+      var validatorCreated = makeValidator({
         folder:         path.join(__dirname, 'schemas'),
         schemaBaseUrl:  'http://localhost:4321/'
       });

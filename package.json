@@ -25,7 +25,7 @@
     "hoek": "2.x.x",
     "lodash": "2.4.1",
     "promise": "^7.0.4",
-    "schema-validator-publisher": "^0.8.7",
+    "schema-validator-publisher": "^0.8.8",
     "slugid": "^1.1.0",
     "source-map-support": "^0.3.3",
     "superagent": "0.18.2",
@@ -45,9 +45,10 @@
     "babel-preset-stage-1": "^6.3.13",
     "eslint": "^1.9.0",
     "mocha": "2.0.1",
-    "taskcluster-base": "^0.8.10",
     "taskcluster-lib-config": "^0.8.8",
     "taskcluster-lib-testing": "^0.8.10",
+    "taskcluster-lib-stats": "^0.8.7",
+    "taskcluster-lib-app": "^0.8.9",
     "tc-rules": "^2.0.0"
   },
   "main": "./lib/api.js"

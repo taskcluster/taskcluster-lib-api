@@ -5,8 +5,9 @@ suite("api/responsetimer", function() {
   var Promise         = require('promise');
   var mockAuthServer  = require('taskcluster-lib-testing/.test/mockauthserver');
   var subject         = require('../');
-  var base            = require('taskcluster-base');
+  var stats           = require('taskcluster-lib-stats');
   var config          = require('taskcluster-lib-config');
+  var makeValidator   = require('schema-validator-publisher');
   var express         = require('express');
   var path            = require('path');
 
@@ -66,8 +67,8 @@ suite("api/responsetimer", function() {
       _mockAuthServer = server;
     }).then(function() {
       // Create server for api
-      return base.validator().then(function(validator) {
-        influx = new base.stats.Influx({
+      return makeValidator().then(function(validator) {
+        influx = new stats.Influx({
           connectionString:   cfg.get('influxdb:connectionString')
         });
 
