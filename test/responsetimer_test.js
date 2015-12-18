@@ -4,7 +4,7 @@ suite("api/responsetimer", function() {
   var assert          = require('assert');
   var Promise         = require('promise');
   var mockAuthServer  = require('taskcluster-lib-testing/.test/mockauthserver');
-  var subject         = require('../../');
+  var subject         = require('../');
   var base            = require('taskcluster-base');
   var config          = require('taskcluster-lib-config');
   var express         = require('express');
