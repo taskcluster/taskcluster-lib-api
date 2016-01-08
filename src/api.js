@@ -1140,7 +1140,9 @@ var createRemoteSignatureValidator = function(options) {
 var remoteAuthentication = function(options, entry) {
   assert(options.signatureValidator instanceof Function,
          "Expected options.signatureValidator to be a function!");
-  // Returns promise for object on the form: {error, message, scopes}
+  // Returns promise for object on the form:
+  //   {status, message, scopes, scheme, hash}
+  // scopes, scheme, hash are only present if status isn't auth-failed
   var authenticate = function(req) {
     // Check that we're not using two authentication schemes, we could
     // technically allow two. There are cases where we redirect and it would be
@@ -1150,6 +1152,7 @@ var remoteAuthentication = function(options, entry) {
     if (req.headers && req.headers.authorization &&
         req.query && req.query.bewit) {
       return Promise.resolve({
+        status:   'auth-failed',
         message:  "Cannot use two authentication schemes at once " +
                   "this request has both bewit in querystring and " +
                   "and 'authorization' header"

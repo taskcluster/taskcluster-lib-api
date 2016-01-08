@@ -3,8 +3,10 @@ suite("api/auth", function() {
   var request         = require('superagent-promise');
   var assert          = require('assert');
   var Promise         = require('promise');
+  var testing         = require('taskcluster-lib-testing');
   var mockAuthServer  = require('taskcluster-lib-testing/.test/mockauthserver');
   var makeValidator   = require('schema-validator-publisher');
+  var makeApp         = require('taskcluster-lib-app');
   var subject         = require('../');
   var express         = require('express');
   var hawk            = require('hawk');
@@ -22,6 +24,17 @@ suite("api/auth", function() {
   var api = new subject({
     title:        "Test Api",
     description:  "Another test api"
+  });
+
+  api.declare({
+    method:       'get',
+    route:        '/test-static-scope',
+    name:         'testStaticScopes',
+    title:        "Test End-Point",
+    scopes:       [['service:magic']],
+    description:  "Place we can call to test something",
+  }, function(req, res) {
+    res.status(200).json({ok: true});
   });
 
   // Declare a method we can test parameterized scopes with
@@ -66,69 +79,63 @@ suite("api/auth", function() {
   });
 
   // Create a mock authentication server
-  setup(function(){
-    assert(_mockAuthServer === null,  "_mockAuthServer must be null");
-    assert(_apiServer === null,       "_apiServer must be null");
-    return mockAuthServer({
-      port:         23243
-    }).then(function(server) {
-      _mockAuthServer = server;
-    }).then(function() {
-      // Create server for api
-      return makeValidator().then(function(validator) {
-        // Create router
-        var router = api.router({
-          validator:      validator,
-          credentials: {
-            clientId:     'test-client',
-            accessToken:  'test-token'
-          },
-          authBaseUrl:    'http://localhost:23243'
-        });
-
-        // Create application
-        var app = express();
-
-        // Use router
-        app.use(router);
-
-        return new Promise(function(accept, reject) {
-          var server = app.listen(23526);
-          server.once('listening', function() {
-            accept(server)
-          });
-          server.once('error', reject);
-          _apiServer = server;
-        });
-      });
+  setup(async () => {
+    _mockAuthServer = await testing.createMockAuthServer({
+      port:         23243,
+      clients: [
+        {
+          clientId:     'test-client',
+          accessToken:  'test-token',
+          scopes:       ['service:magic'],
+        }, {
+          clientId:     'rockstar',
+          accessToken:  'groupie',
+          scopes:       ['*'],
+        }, {
+          clientId:     'nobody',
+          accessToken:  'test-token',
+          scopes:       ['another-irrelevant-scope'],
+        }
+      ],
     });
+
+    // Create router
+    var router = api.router({
+      validator:      await makeValidator(),
+      authBaseUrl:    'http://localhost:23243/v1'
+    });
+
+    // Create application
+    var app = makeApp({
+      port:       23526,
+      env:        'development',
+      forceSSL:   false,
+      trustProxy: false,
+    });
+
+    // Use router
+    app.use(router);
+
+    _apiServer = await app.createServer();
   });
 
   // Close server
-  teardown(function() {
-    assert(_mockAuthServer, "_mockAuthServer doesn't exist");
-    assert(_apiServer,      "_apiServer doesn't exist");
-    return new Promise(function(accept) {
-      _apiServer.once('close', function() {
-        _apiServer = null;
-        accept();
-      });
-      _apiServer.close();
-    }).then(function() {
-      return new Promise(function(accept) {
+  teardown(async () => {
+    await Promise.all([
+      _apiServer.terminate(),
+      new Promise(function(accept) {
         _mockAuthServer.once('close', function() {
           _mockAuthServer = null;
           accept();
         });
         _mockAuthServer.close();
-      });
-    });
+      })
+    ]);
   });
 
 
-  // Test getCredentials from mockAuthServer
-  test("getCredentials from mockAuthServer", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("request with static scope", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     return request
       .get(url)
       .hawk({
@@ -138,19 +145,18 @@ suite("api/auth", function() {
       })
       .end()
       .then(function(res) {
-        assert(res.ok,                                "Request failed");
-        assert(res.body.accessToken === 'test-token', "Got wrong token");
+        assert(res.ok,               "Request failed");
+        assert(res.body.ok === true, "Got result");
       });
   });
 
-  // Test getCredentials with wrong credentials
-  test("Fail auth", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("request with static scope - wrong token", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     return request
       .get(url)
       .hawk({
-        id:           'delegating-client',
-        key:          'test-token',
+        id:           'test-client',
+        key:          'wrong-token',
         algorithm:    'sha256'
       })
       .end()
@@ -159,9 +165,23 @@ suite("api/auth", function() {
       });
   });
 
+  test("request with static scope - fail no scope", function() {
+    var url = 'http://localhost:23526/test-static-scope';
+    return request
+      .get(url)
+      .hawk({
+        id:           'nobody',
+        key:          'test-token',
+        algorithm:    'sha256'
+      })
+      .end()
+      .then(function(res) {
+        assert(res.status === 403, "Request didn't fail");
+      });
+  });
 
-  test("Auth with restricted scopes", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("static-scope with authorizedScopes", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     return request
       .get(url)
       .hawk({
@@ -170,7 +190,7 @@ suite("api/auth", function() {
         algorithm:    'sha256'
       }, {
         ext: new Buffer(JSON.stringify({
-          authorizedScopes:    ['auth:credenti*']
+          authorizedScopes:    ['service:magic']
         })).toString('base64')
       })
       .end()
@@ -182,8 +202,30 @@ suite("api/auth", function() {
       });
   });
 
-  test("Auth with restricted scopes (too restricted)", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("static-scope with authorizedScopes (star)", function() {
+    var url = 'http://localhost:23526/test-static-scope';
+    return request
+      .get(url)
+      .hawk({
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256'
+      }, {
+        ext: new Buffer(JSON.stringify({
+          authorizedScopes:    ['service:ma*']
+        })).toString('base64')
+      })
+      .end()
+      .then(function(res) {
+        if(!res.ok) {
+          console.log(res.body);
+          assert(false, "Request failed");
+        }
+      });
+  });
+
+  test("static-scope with authorizedScopes (too strict)", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     return request
       .get(url)
       .hawk({
@@ -197,21 +239,21 @@ suite("api/auth", function() {
       })
       .end()
       .then(function(res) {
-        assert(res.status === 401, "Request didn't fail as expected");
+        assert(res.status === 403, "Request didn't fail as expected");
       });
   });
 
-  test("Auth with restricted scopes (can't restrict)", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("static-scope with authorizedScopes (it doesn't have)", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     return request
       .get(url)
       .hawk({
         id:           'nobody',
-        key:          'nerd',
+        key:          'test-token',
         algorithm:    'sha256'
       }, {
         ext: new Buffer(JSON.stringify({
-          authorizedScopes:    ['auth:credenti*']
+          authorizedScopes:    ['service:magic']
         })).toString('base64')
       })
       .end()
@@ -246,12 +288,12 @@ suite("api/auth", function() {
       .get(url)
       .hawk({
         id:           'nobody',
-        key:          'nerd',
+        key:          'test-token',
         algorithm:    'sha256'
       })
       .end()
       .then(function(res) {
-        assert(res.status === 401, "Request didn't fail");
+        assert(res.status === 403, "Request didn't fail");
       });
   });
 
@@ -297,8 +339,35 @@ suite("api/auth", function() {
       });
   });
 
-  // Test with dynamic authentication that doesn't work
-  test("With dynamic authentication (overscoped)", function() {
+  test("With dynamic authentication (authorizedScopes)", function() {
+    var url = 'http://localhost:23526/test-dyn-auth';
+    return request
+      .get(url)
+      .send({
+        scopes: [
+          'got-all/folder/t',
+          'got-all/hello/*',
+          'got-all/',
+          'got-all/*',
+          'got-only/this',
+        ]
+      })
+      .hawk({
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256'
+      }, {
+        ext: new Buffer(JSON.stringify({
+          authorizedScopes:    ['got-all/*', 'got-only/this']
+        })).toString('base64')
+      })
+      .end()
+      .then(function(res) {
+        assert(res.ok, "Request failed");
+      });
+  });
+
+  test("With dynamic authentication (miss scoped)", function() {
     var url = 'http://localhost:23526/test-dyn-auth';
     return request
       .get(url)
@@ -313,23 +382,21 @@ suite("api/auth", function() {
         ]
       })
       .hawk({
-        id:           'delegating-client',
-        key:          'test-token',
+        id:           'rockstar',
+        key:          'groupie',
         algorithm:    'sha256'
       }, {
         ext: new Buffer(JSON.stringify({
-          delegating:       true,
-          scopes:           ['got-all/*', 'got-only/this']
+          authorizedScopes:    ['got-all/*', 'got-only/this']
         })).toString('base64')
       })
       .end()
       .then(function(res) {
-        assert(res.status === 401, "Request didn't fail");
+        assert(res.status === 403, "Request didn't fail");
       });
   });
 
-  // Test with dynamic authentication that doesn't work (again)
-  test("With dynamic authentication (overscoped again)", function() {
+  test("With dynamic authentication (miss scoped again)", function() {
     var url = 'http://localhost:23526/test-dyn-auth';
     return request
       .get(url)
@@ -339,13 +406,36 @@ suite("api/auth", function() {
         ]
       })
       .hawk({
-        id:           'delegating-client',
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256'
+      }, {
+        ext: new Buffer(JSON.stringify({
+          authorizedScopes:    ['got-only/this']
+        })).toString('base64')
+      })
+      .end()
+      .then(function(res) {
+        assert(res.status === 403, "Request didn't fail");
+      });
+  });
+
+  test("With dynamic authentication (overscoped)", function() {
+    var url = 'http://localhost:23526/test-dyn-auth';
+    return request
+      .get(url)
+      .send({
+        scopes: [
+          'got-only/this*',
+        ]
+      })
+      .hawk({
+        id:           'nobody',
         key:          'test-token',
         algorithm:    'sha256'
       }, {
         ext: new Buffer(JSON.stringify({
-          delegating:       true,
-          scopes:           ['got-only/this']
+          authorizedScopes:    ['got-only/*']
         })).toString('base64')
       })
       .end()
@@ -354,8 +444,8 @@ suite("api/auth", function() {
       });
   });
 
-  test("getCredentials using bewit", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("static-scope using bewit", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     var bewit = hawk.uri.getBewit(url, {
       credentials:    {
         id:           'test-client',
@@ -369,13 +459,13 @@ suite("api/auth", function() {
       .get(url + "?bewit=" + bewit)
       .end()
       .then(function(res) {
-        assert(res.ok,                                "Request failed");
-        assert(res.body.accessToken === 'test-token', "Got wrong token");
+        assert(res.ok,               "Request failed");
+        assert(res.body.ok === true, "Got wrong result");
       });
   });
 
-  test("getCredentials using bewit (authorizedScopes)", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("static-scope using bewit (authorizedScopes)", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     var bewit = hawk.uri.getBewit(url, {
       credentials:    {
         id:           'test-client',
@@ -384,21 +474,42 @@ suite("api/auth", function() {
       },
       ttlSec:         60,
       ext:            new Buffer(JSON.stringify({
-        authorizedScopes:    ['auth:credentials']
+        authorizedScopes:    ['service:magic']
       })).toString('base64')
     });
     return request
       .get(url + "?bewit=" + bewit)
       .end()
       .then(function(res) {
-        assert(res.ok,                                "Request failed");
-        assert(res.body.accessToken === 'test-token', "Got wrong token");
+        assert(res.ok,               "Request failed");
+        assert(res.body.ok === true, "Got wrong result");
       });
   });
 
+  test("static-scope using bewit (authorizedScopes star)", function() {
+    var url = 'http://localhost:23526/test-static-scope';
+    var bewit = hawk.uri.getBewit(url, {
+      credentials:    {
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256'
+      },
+      ttlSec:         60,
+      ext:            new Buffer(JSON.stringify({
+        authorizedScopes:    ['service:mag*']
+      })).toString('base64')
+    });
+    return request
+      .get(url + "?bewit=" + bewit)
+      .end()
+      .then(function(res) {
+        assert(res.ok,               "Request failed");
+        assert(res.body.ok === true, "Got wrong result");
+      });
+  });
 
-  test("getCredentials using bewit (authorizedScopes underscoped)", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("static-scope using bewit (authorizedScopes underscoped)", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     var bewit = hawk.uri.getBewit(url, {
       credentials:    {
         id:           'test-client',
@@ -414,13 +525,12 @@ suite("api/auth", function() {
       .get(url + "?bewit=" + bewit)
       .end()
       .then(function(res) {
-        assert(res.status === 401, "Request didn't fail!");
+        assert(res.status === 403, "Request didn't fail!");
       });
   });
 
-
-  test("getCredentials using bewit and header", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("static-scope using bewit and header", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     var bewit = hawk.uri.getBewit(url, {
       credentials:    {
         id:           'test-client',
@@ -444,8 +554,8 @@ suite("api/auth", function() {
       });
   });
 
-  test("getCredentials using bewit expired", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("static-scope using bewit expired", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     var bewit = hawk.uri.getBewit(url, {
       credentials:    {
         id:           'test-client',
@@ -464,16 +574,14 @@ suite("api/auth", function() {
       });
   });
 
-
-
-  test("Auth with temporary credentials", function() {
-    var url = 'http://localhost:23243/client/test-client/credentials';
+  test("static-scope with temporary credentials (star scope)", function() {
+    var url = 'http://localhost:23526/test-static-scope';
     var expiry = new Date();
     expiry.setMinutes(expiry.getMinutes() + 5);
 
     var certificate = {
       version:          1,
-      scopes:           ['auth:credenti*'],
+      scopes:           ['service:mag*'],
       start:            new Date().getTime(),
       expiry:           expiry.getTime(),
       seed:             slugid.v4() + slugid.v4(),
@@ -522,6 +630,121 @@ suite("api/auth", function() {
           console.log(res.body);
           assert(false, "Request failed");
         }
+      });
+  });
+
+  test("static-scope with temporary credentials (exact scope)", function() {
+    var url = 'http://localhost:23526/test-static-scope';
+    var expiry = new Date();
+    expiry.setMinutes(expiry.getMinutes() + 5);
+
+    var certificate = {
+      version:          1,
+      scopes:           ['service:magic'],
+      start:            new Date().getTime(),
+      expiry:           expiry.getTime(),
+      seed:             slugid.v4() + slugid.v4(),
+      signature:        null
+    };
+
+    var key = 'groupie';
+
+    // Create signature
+    var signature = crypto.createHmac('sha256', key)
+      .update(
+        [
+          'version:'  + certificate.version,
+          'seed:'     + certificate.seed,
+          'start:'    + certificate.start,
+          'expiry:'   + certificate.expiry,
+          'scopes:',
+        ].concat(certificate.scopes).join('\n')
+      )
+      .digest('base64');
+    certificate.signature = signature;
+
+    // Create temporary key
+    var tempKey = crypto.createHmac('sha256', key)
+      .update(certificate.seed)
+      .digest('base64')
+      .replace(/\+/g, '-')  // Replace + with - (see RFC 4648, sec. 5)
+      .replace(/\//g, '_')  // Replace / with _ (see RFC 4648, sec. 5)
+      .replace(/=/g,  '');  // Drop '==' padding
+
+    // Send request
+    return request
+      .get(url)
+      .hawk({
+        id:           'rockstar',
+        key:          tempKey,
+        algorithm:    'sha256'
+      }, {
+        ext: new Buffer(JSON.stringify({
+          certificate:  certificate
+        })).toString('base64')
+      })
+      .end()
+      .then(function(res) {
+        if(!res.ok) {
+          console.log(res.body);
+          assert(false, "Request failed");
+        }
+      });
+  });
+
+  test("static-scope with temporary credentials (overscoped)", function() {
+    var url = 'http://localhost:23526/test-static-scope';
+    var expiry = new Date();
+    expiry.setMinutes(expiry.getMinutes() + 5);
+
+    var certificate = {
+      version:          1,
+      scopes:           ['service:mag*'],
+      start:            new Date().getTime(),
+      expiry:           expiry.getTime(),
+      seed:             slugid.v4() + slugid.v4(),
+      signature:        null
+    };
+
+    var key = 'test-token';
+
+    // Create signature
+    var signature = crypto.createHmac('sha256', key)
+      .update(
+        [
+          'version:'  + certificate.version,
+          'seed:'     + certificate.seed,
+          'start:'    + certificate.start,
+          'expiry:'   + certificate.expiry,
+          'scopes:',
+        ].concat(certificate.scopes).join('\n')
+      )
+      .digest('base64');
+    certificate.signature = signature;
+
+    // Create temporary key
+    var tempKey = crypto.createHmac('sha256', key)
+      .update(certificate.seed)
+      .digest('base64')
+      .replace(/\+/g, '-')  // Replace + with - (see RFC 4648, sec. 5)
+      .replace(/\//g, '_')  // Replace / with _ (see RFC 4648, sec. 5)
+      .replace(/=/g,  '');  // Drop '==' padding
+
+    // Send request
+    return request
+      .get(url)
+      .hawk({
+        id:           'test-client',
+        key:          tempKey,
+        algorithm:    'sha256'
+      }, {
+        ext: new Buffer(JSON.stringify({
+          certificate:  certificate
+        })).toString('base64')
+      })
+      .end()
+      .then(function(res) {
+        assert(!res.ok, 'Request should have failed');
       });
   });
 });
