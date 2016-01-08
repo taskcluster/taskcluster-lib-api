@@ -37,6 +37,17 @@ suite("api/auth", function() {
     res.status(200).json({ok: true});
   });
 
+  api.declare({
+    method:       'get',
+    route:        '/scopes',
+    name:         'getScopes',
+    title:        "Test End-Point",
+    scopes:       [['service:magic']],
+    description:  "Place we can call to test something",
+  }, async function(req, res) {
+    res.status(200).json({scopes: await req.scopes()});
+  });
+
   // Declare a method we can test parameterized scopes with
   api.declare({
     method:       'get',
@@ -571,6 +582,24 @@ suite("api/auth", function() {
       .then(function(res) {
         // Two authentication schemes is not allowed... so this should fail!
         assert(res.status === 401, "Request didn't fail!!!");
+      });
+  });
+
+  test("request scopes from caller", function() {
+    var url = 'http://localhost:23526/scopes';
+    return request
+      .get(url)
+      .hawk({
+        id:           'test-client',
+        key:          'test-token',
+        algorithm:    'sha256'
+      })
+      .end()
+      .then(function(res) {
+        assert(res.ok, "Request failed");
+        console.log(res.body.scopes);
+        assert(res.body.scopes.length === 1, "wrong number of scopes");
+        assert(res.body.scopes[0] === 'service:magic', "failed scopes");
       });
   });
 
