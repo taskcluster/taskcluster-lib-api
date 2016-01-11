@@ -549,6 +549,10 @@ var nonceManager = function(options) {
  * Remark `deferAuth` will not perform authorization unless, `req.satisfies({})`
  * is called either without arguments or with an object as first argument.
  *
+ * This method also addeds `req.scopes()` which returns a promise for the set
+ * of scopes that the caller has. Please, use `req.satisfies()` whenever
+ * possible rather than implement custom scope checking logic.
+ *
  * Reports 401 if authentication fails.
  */
 var authenticate = function(nonceManager, clientLoader, options) {
@@ -637,6 +641,11 @@ var authenticate = function(nonceManager, clientLoader, options) {
 
         // Now we're authenticated
         authenticated = true;
+      };
+
+      /** Create method that returns list of scopes the caller have */
+      req.scopes = function() {
+        return Promise.resolve(authorizedScopes);
       };
 
       /**
@@ -1135,6 +1144,10 @@ var createRemoteSignatureValidator = function(options) {
  * Remark `deferAuth` will not perform authorization unless, `req.satisfies({})`
  * is called either without arguments or with an object as first argument.
  *
+ * This method also adds `req.scopes()` which returns a promise for the set of
+ * scopes the caller has. Please, not that `req.scopes()` returns `[]` if there
+ * was an authentication error.
+ *
  * Reports 401 if authentication fails.
  */
 var remoteAuthentication = function(options, entry) {
@@ -1189,6 +1202,16 @@ var remoteAuthentication = function(options, entry) {
 
   return function(req, res, next) {
     return authenticate(req).then(function(result) {
+      /** Create method that returns list of scopes the caller has */
+      req.scopes = function() {
+        // Check that we satisfy [], this ensures that payload hash is checked
+        // first... Just in case...
+        if(req.satisfies([[]], true)) {
+          return Promise.resolve(result.scopes || []);
+        }
+        return Promise.resolve([]);
+      };
+
       /**
        * Create method to check if request satisfies a scope-set from required
        * set of scope-sets.
