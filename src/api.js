@@ -253,8 +253,7 @@ var nonceManager = function(options) {
  * applies scope restrictions, certificate validation and returns a clone if
  * modified (otherwise it returns the original).
  */
-var limitClientWithExt = function(client, ext, expandScopes) {
-  // Attempt to parse ext
+var parseExt = function(ext) {
   try {
     ext = JSON.parse(new Buffer(ext, 'base64').toString('utf-8'));
   }
@@ -263,6 +262,18 @@ var limitClientWithExt = function(client, ext, expandScopes) {
           err, err.stack);
     throw new Error("Failed to parse ext");
   }
+}
+
+/**
+ * Limit the client scopes and possibly use temporary keys.
+ *
+ * Takes a client object on the form: `{clientId, accessToken, scopes}`,
+ * applies scope restrictions, certificate validation and returns a clone if
+ * modified (otherwise it returns the original).
+ */
+var limitClientWithExt = function(credClientId, issuingCliendId, accessToken, scopes, ext, expandScopes) {
+  let issuingScopes = scopes;
+  let res = {scopes, accessToken};
 
   // Handle certificates
   if (ext.certificate) {
@@ -309,13 +320,13 @@ var limitClientWithExt = function(client, ext, expandScopes) {
     // Check scope validity
 
     // Validate certificate scopes are subset of client
-    if (!utils.scopeMatch(client.scopes, [cert.scopes])) {
-      throw new Error("ext.certificate issuer `" + client.clientId +
+    if (!utils.scopeMatch(scopes, [cert.scopes])) {
+      throw new Error("ext.certificate issuer `" + issuingClientId +
                       "` doesn't have sufficient scopes");
     }
 
     // Generate certificate signature
-    var signature = crypto.createHmac('sha256', client.accessToken)
+    var signature = crypto.createHmac('sha256', accessToken)
       .update([
         'version:'  + '1',
         'seed:'     + cert.seed,
@@ -332,7 +343,7 @@ var limitClientWithExt = function(client, ext, expandScopes) {
     }
 
     // Regenerate temporary key
-    var temporaryKey = crypto.createHmac('sha256', client.accessToken)
+    var temporaryKey = crypto.createHmac('sha256', accessToken)
       .update(cert.seed)
       .digest('base64')
       .replace(/\+/g, '-')  // Replace + with - (see RFC 4648, sec. 5)
@@ -340,11 +351,8 @@ var limitClientWithExt = function(client, ext, expandScopes) {
       .replace(/=/g,  '');  // Drop '==' padding
 
     // Update scopes and accessToken
-    client = {
-      clientId:     client.clientId,
-      accessToken:  temporaryKey,
-      scopes:       expandScopes(cert.scopes),
-    };
+    res.accessToken = temporaryKey;
+    res.scopes = scopes = expandScopes(cert.scopes);
   }
 
   // Handle scope restriction with authorizedScopes
@@ -357,21 +365,26 @@ var limitClientWithExt = function(client, ext, expandScopes) {
       throw new Error("ext.authorizedScopes must be an array of valid scopes");
     }
 
-    // Validate authorizedScopes scopes are subset of client
-    if (!utils.scopeMatch(client.scopes, [ext.authorizedScopes])) {
+    // Validate authorizedScopes scopes are subset of the client (or temporary) scopes
+    if (!utils.scopeMatch(res.scopes, [ext.authorizedScopes])) {
       throw new Error("ext.authorizedScopes oversteps your scopes");
     }
 
-    // Update scopes on client object
-    client = {
-      clientId:     client.clientId,
-      accessToken:  client.accessToken,
-      scopes:       expandScopes(ext.authorizedScopes),
-    };
+    // Further limit scopes
+    res.scopes = scopes = expandScopes(ext.authorizedScopes);
   }
 
-  // Return modified client
-  return client;
+  // If the issuing and credential clientIds are not the same, then the issuing
+  // clientId's scopes must be able to create a client with this ID
+  if (issuingClientId != credClientId) {
+    let createScope = 'auth:create-client:' + credClientId;
+    if (!utils.scopeMatch(issuingScopes, [[createScope]])) {
+      throw new Error("ext.certificate issuer `" + issuingClientId +
+                      "` doesn't have `" + createScope + "` for clientId.");
+    }
+  }
+
+  return res;
 };
 
 
@@ -410,19 +423,36 @@ var createSignatureValidator = function(options) {
   assert(options.expandScopes instanceof Function,
          "options.expandScopes must be a function");
   var loadCredentials = function(clientId, ext, callback) {
-    Promise.resolve(options.clientLoader(clientId)).then(function(client) {
-      if (ext) {
-        // We check certificates and apply limitations to authorizedScopes here,
-        // if we've parsed ext incorrectly it could be a security issue, as
-        // scope elevation _might_ be possible. But it's a rather unlikely
-        // exploit... Besides we have plenty of obscurity to protect us here :)
-        client = limitClientWithExt(client, ext, options.expandScopes);
+    // We may have two clientIds here: the credClientId (the one the caller
+    // sent in the Hawk Authorization header) and the issuingClientId (the one
+    // that signed the temporary credentials).
+    let credClientId = clientId,
+        issuingClientId = clientId;
+
+    if (ext) {
+      ext = parseExt(ext);
+      if (ext.issuer) {
+        issuingClientId = ext.issuer;
+        if (typeof(issuingClientId) !== 'string') {
+          throw new Error('ext.issuer must be a string');
+        }
       }
+    }
+
+    // load the issuing clientId
+    Promise.resolve(options.clientLoader(issuingClientId)).then(({clientId, accessToken, scopes}) => {
+      // apply restrictions based on the ext field
+      if (ext) {
+        ({scopes, accessToken} = limitClientWithExt(
+            credClientId, issuingClientId, accessToken,
+            scopes, ext, options.expandScopes));
+      }
+
       callback(null, {
-        clientToken:  client.clientId,
-        key:          client.accessToken,
-        algorithm:    'sha256',
-        scopes:       client.scopes
+        key:       accessToken,
+        algorithm: 'sha256',
+        clientId:  credClientId,
+        scopes:    scopes
       });
     }).catch(callback);
   };
@@ -448,7 +478,8 @@ var createSignatureValidator = function(options) {
           result = {
             status:   'auth-success',
             scheme:   'hawk',
-            scopes:   credentials.scopes
+            scopes:   credentials.scopes,
+            clientId: credentials.clientId
           };
           if (artifacts.hash) {
             result.hash = artifacts.hash;
