@@ -44,7 +44,10 @@ suite("api/auth", function() {
     scopes:       [['service:magic']],
     description:  "Place we can call to test something",
   }, async function(req, res) {
-    res.status(200).json({scopes: await req.scopes()});
+    res.status(200).json({
+      scopes: await req.scopes(),
+      clientId: req.clientId
+    });
   });
 
   // Declare a method we can test parameterized scopes with
@@ -72,6 +75,7 @@ suite("api/auth", function() {
     title:        "Test End-Point",
     description:  "Place we can call to test something",
   }, function(req, res) {
+    assert(req.clientId === '(no-auth)');
     res.status(200).json("OK");
   });
 
@@ -388,6 +392,7 @@ suite("api/auth", function() {
         assert(res.ok, "Request failed");
         assert(res.body.scopes.length === 1, "wrong number of scopes");
         assert(res.body.scopes[0] === 'service:magic', "failed scopes");
+        assert(res.body.clientId == 'test-client', "bad clientId");
       });
   });
 
