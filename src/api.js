@@ -301,8 +301,8 @@ var createRemoteSignatureValidator = function(options) {
  * The request grows the following properties:
  *
  *  * `req.satisfies(scopesets, noReply)`
- *  * `req.scopes()`
- *  * `req.clientId`
+ *  * `await req.scopes()`
+ *  * `await req.clientId()`
  *
  * The `req.satisfies(scopesets, noReply)` method returns `true` if the
  * client satisfies one of the scopesets. If the client does not satisfy one
@@ -412,11 +412,14 @@ var remoteAuthentication = function(options, entry) {
         return Promise.resolve(result.scopes || []);
       };
 
+      let clientId;
       if (result.status === 'auth-success') {
-        req.clientId = result.clientId || '(unknown)';
+        clientId = result.clientId || '(unknown)';
       } else {
-        req.clientId = '(' + result.status + ')';
+        clientId = '(' + result.status + ')';
       }
+      // this is a function so we can later make an async request on demand
+      req.clientId = async () => clientId;
 
       /**
        * Create method to check if request satisfies a scope-set from required

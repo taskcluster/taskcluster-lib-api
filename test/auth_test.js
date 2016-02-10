@@ -46,7 +46,7 @@ suite("api/auth", function() {
   }, async function(req, res) {
     res.status(200).json({
       scopes: await req.scopes(),
-      clientId: req.clientId
+      clientId: await req.clientId()
     });
   });
 
@@ -74,8 +74,8 @@ suite("api/auth", function() {
     name:         'testNoAuth',
     title:        "Test End-Point",
     description:  "Place we can call to test something",
-  }, function(req, res) {
-    assert(req.clientId === '(no-auth)');
+  }, async function(req, res) {
+    assert((await req.clientId()) === '(no-auth)');
     res.status(200).json("OK");
   });
 
