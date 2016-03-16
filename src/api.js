@@ -20,7 +20,6 @@ var crypto        = require('crypto');
 var series        = require('taskcluster-lib-stats/lib/series');
 var cryptiles     = require('cryptiles');
 var taskcluster   = require('taskcluster-client');
-var validator     = require('taskcluster-lib-validate');
 var Ajv           = require('ajv');
 var errors        = require('./errors');
 var typeis        = require('type-is');
@@ -114,13 +113,11 @@ var schema = function(validate, options) {
       }
       var error = validate(req.body, options.input);
       if (error) {
-        debug("Request payload for %s didn't follow schema %s",
-              req.url, options.input);
+        debug('Input schema validation error: ' + error);
         return res.reportError(
           'InputValidationError',
-          "Request payload must follow the schema: {{schema}}\n" +
-          "Error: {{error}}", {
           error,
+        {
           schema: options.input,
           payload: req.body
         });
@@ -134,12 +131,10 @@ var schema = function(validate, options) {
       if(options.output !== undefined && !options.skipOutputValidation) {
         var error = validate(json, options.output);
         if (error) {
-          debug("Reply for %s didn't match schema: %s got errors: %j from output: %j",
-                req.url, options.output, error, json);
-          let err = new Error('Output schema validation of ' + options.output);
+          debug('Output schema validation error: ' + error);
+          let err = new Error('Output schema validation error: ' + error);
           err.schema = options.output;
           err.url = req.url;
-          err.errors = [error,];
           err.payload = json;
           return res.reportInternalError(err);
         }
