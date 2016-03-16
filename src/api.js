@@ -20,7 +20,8 @@ var crypto        = require('crypto');
 var series        = require('taskcluster-lib-stats/lib/series');
 var cryptiles     = require('cryptiles');
 var taskcluster   = require('taskcluster-client');
-var Validator     = require('schema-validator-publisher').Validator;
+var validator     = require('taskcluster-lib-validate');
+var Ajv           = require('ajv');
 var errors        = require('./errors');
 var typeis        = require('type-is');
 
@@ -99,7 +100,7 @@ var parameterValidator = function(options) {
  * Handlers may output errors using `req.json`, as `req.reply` will validate
  * against schema and always returns a 200 OK reply.
  */
-var schema = function(validator, options) {
+var schema = function(validate, options) {
   return function(req, res, next) {
     // If input schema is defined we need to validate the input
     if (options.input !== undefined && !options.skipInputValidation) {
@@ -111,15 +112,15 @@ var schema = function(validator, options) {
           contentType: (req.headers['content-type'] || null),
         });
       }
-      var errors = validator.check(req.body, options.input);
-      if (errors) {
+      var error = validate(req.body, options.input);
+      if (error) {
         debug("Request payload for %s didn't follow schema %s",
               req.url, options.input);
         return res.reportError(
           'InputValidationError',
           "Request payload must follow the schema: {{schema}}\n" +
-          "Errors: {{errors}}", {
-          errors,
+          "Error: {{error}}", {
+          error,
           schema: options.input,
           payload: req.body
         });
@@ -131,14 +132,14 @@ var schema = function(validator, options) {
       // If we're supposed to validate outgoing messages and output schema is
       // defined, then we have to validate against it...
       if(options.output !== undefined && !options.skipOutputValidation) {
-        var errors = validator.check(json, options.output);
-        if (errors) {
+        var error = validate(json, options.output);
+        if (error) {
           debug("Reply for %s didn't match schema: %s got errors: %j from output: %j",
-                req.url, options.output, errors, json);
+                req.url, options.output, error, json);
           let err = new Error('Output schema validation of ' + options.output);
           err.schema = options.output;
           err.url = req.url;
-          err.errors = errors;
+          err.errors = [error,];
           err.payload = json;
           return res.reportInternalError(err);
         }
@@ -679,17 +680,7 @@ API.prototype.declare = function(options, handler) {
  * Return an `express.Router` instance.
  */
 API.prototype.router = function(options) {
-  //assert(options.validator instanceof Validator,
-  //       "API.router() needs a validator");
-  // NOTE that instanceof Validator and similar calls will no longer work
-  // in the split-tc-base world.
-  assert(options.validator.constructor.name === 'Validator');
-  debugger;
-  ['check', 'load', 'register'].forEach(function(x) {
-    assert(typeof options.validator.constructor.prototype[x] === 'function',
-        'API.router() needs validator property with ' + x + ' function');
-  });
-
+  assert(options.validator);
 
   // Provide default options
   options = _.defaults({}, options, {
@@ -870,21 +861,19 @@ API.prototype.reference = function(options) {
     })
   };
 
-  // Create validator to validate schema
-  var validator = new Validator();
-  // Load api-reference.json schema from disk
+  var ajv = Ajv({useDefaults: 'clone', format: 'full', verbose: true, allErrors: true});
   var schemaPath = path.join(__dirname, 'schemas', 'api-reference.json');
   var schema = fs.readFileSync(schemaPath, {encoding: 'utf-8'});
-  validator.register(JSON.parse(schema));
+  var validate = ajv.compile(JSON.parse(schema));
 
   // Check against it
   var refSchema = 'http://schemas.taskcluster.net/base/v1/api-reference.json#';
-  var errors = validator.check(reference, refSchema);
-  if (errors) {
+  var valid = validate(reference, refSchema);
+  if (!valid) {
     debug("API.references(): Failed to validate against schema, errors: %j " +
-          "reference: %j", errors, reference);
+          "reference: %j", validate.errors, reference);
     debug("Reference:\n%s", JSON.stringify(reference, null, 2));
-    debug("Errors:\n%s", JSON.stringify(errors, null, 2));
+    debug("Errors:\n%s", JSON.stringify(validate.errors, null, 2));
     throw new Error("API.references(): Failed to validate against schema");
   }
 
