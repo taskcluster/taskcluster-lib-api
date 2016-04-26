@@ -13,15 +13,13 @@ var path          = require('path');
 var fs            = require('fs');
 require('superagent-hawk')(require('superagent'));
 var request       = require('superagent-promise');
-var stats         = require('taskcluster-lib-stats');
 var scopes        = require('taskcluster-lib-scopes');
-var monitoring    = require('taskcluster-lib-monitor');
 var crypto        = require('crypto');
-var series        = require('taskcluster-lib-stats/lib/series');
 var cryptiles     = require('cryptiles');
 var taskcluster   = require('taskcluster-client');
 var Ajv           = require('ajv');
 var errors        = require('./errors');
+var monitoring    = require('./monitoring');
 var typeis        = require('type-is');
 
 // Default baseUrl for authentication server
@@ -666,8 +664,6 @@ API.prototype.declare = function(options, handler) {
  *   nonceManager:        function(nonce, ts, cb) { // Check for replay attack
  *   authBaseUrl:         'http://auth.example.net' // BaseUrl for auth server
  *   raven:               null,   // optional raven.Client for error reporting
- *   component:           'queue',      // Name of the component in stats
- *   drain:               new Influx()  // drain for statistics
  *   monitor:             await require('taskcluster-lib-monitor')({...}),
  * }
  *
@@ -709,16 +705,17 @@ API.prototype.router = function(options) {
                     "supported; use remote signature validation");
   }
 
-  // Create statistics reporters
-  var reporter = null;
-  if (options.drain) {
-    assert(options.component, "The component must be named in statistics!");
-    reporter = series.ResponseTimes.reporter(options.drain);
+  if (options.drain || options.component || options.raven) {
+    console.log('taskcluster-lib-stats is now deprecated!\n' +
+                'Use the `monitor` option rather than `drain`.\n' +
+                '`monitor` should be an instance of taskcluster-lib-monitor.\n' +
+                '`component` is no longer needed. Prefix your `monitor` before use.\n' +
+                '`raven` is deprecated. An instance of `monitor` will work instead.');
   }
+
   var monitor = null;
   if (options.monitor) {
-    assert(options.component, "The component must be named for monitoring!");
-    monitor = options.monitor.prefix(options.component + '.api');
+    monitor = options.monitor.prefix('api');
   }
 
   // Create router
@@ -755,40 +752,8 @@ API.prototype.router = function(options) {
     // Route pattern
     var middleware = [entry.route];
 
-    // Statistics, if reporter is defined
-    if (reporter) {
-      middleware.push(stats.createResponseTimer(reporter, {
-        method:     entry.name,
-        component:  options.component
-      }));
-    }
     if (monitor) {
-      middleware.push( (req, res, next) => {
-        let sent = false;
-        let start = process.hrtime();
-        let send = () => {
-          try {
-            // Avoid sending twice
-            if (sent) {
-              return;
-            }
-            sent = true;
-
-            let d = process.hrtime(start);
-
-          for (let statusCode of [res.statusCode, 'all']) {
-            let k = entry.name + '.' + statusCode;
-            monitor.measure(k, d[0] * 1000 + (d[1] / 1000000));
-            monitor.count(k);
-          }
-          } catch (e) {
-            debug("Error while compiling response times: %s, %j", err, err, err.stack);
-          }
-        };
-        res.once('finish', send);
-        res.once('close', send);
-        next();
-      });
+      middleware.push(monitoring.createReporter(entry.name, monitor));
     }
 
     // Add authentication, schema validation and handler
