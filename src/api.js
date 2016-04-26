@@ -794,7 +794,7 @@ API.prototype.router = function(options) {
     // Add authentication, schema validation and handler
     middleware.push(
       errors.BuildReportErrorMethod(
-        entry.name, this._options.errorCodes, options.raven
+        entry.name, this._options.errorCodes, (monitor || options.raven)
       ),
       bodyParser.text({
         limit:          options.inputLimit,
