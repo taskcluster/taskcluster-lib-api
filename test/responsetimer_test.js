@@ -7,6 +7,7 @@ suite("api/responsetimer", function() {
   var subject         = require('../');
   var stats           = require('taskcluster-lib-stats');
   var config          = require('taskcluster-lib-config');
+  var monitoring      = require('taskcluster-lib-monitor');
   var validator       = require('taskcluster-lib-validate');
   var express         = require('express');
   var path            = require('path');
@@ -56,8 +57,9 @@ suite("api/responsetimer", function() {
   // Reference for test api server
   var _apiServer = null;
 
-  // Create a mock authentication server
   var influx = null;
+  var monitor = null;
+
   setup(function(){
     assert(_mockAuthServer === null,  "_mockAuthServer must be null");
     assert(_apiServer === null,       "_apiServer must be null");
@@ -70,9 +72,14 @@ suite("api/responsetimer", function() {
       return validator({
         folder:         path.join(__dirname, 'schemas'),
         baseUrl:        'http://localhost:4321/'
-      }).then(function(validator) {
+      }).then(async function(validator) {
         influx = new stats.Influx({
-          connectionString:   cfg.get('influxdb:connectionString')
+          connectionString:   cfg.get('influxdb:connectionString'),
+        });
+        monitor = await monitoring({
+          project: 'tc-lib-api-test',
+          credentials: {clientId: 'fake', accessToken: 'fake'},
+          mock: true,
         });
 
         // Create router
@@ -80,7 +87,8 @@ suite("api/responsetimer", function() {
           validator:      validator,
           authBaseUrl:    'http://localhost:23243',
           component:      'ResponseTimerTest',
-          drain:           influx
+          drain:           influx,
+          monitor,
         });
 
         // Create application
@@ -132,6 +140,13 @@ suite("api/responsetimer", function() {
         return influx.flush();
       }).then(function() {
         assert(influx.pendingPoints() === 0, "Expected points to be cleared");
+        assert.equal(Object.keys(monitor.counts).length, 2);
+        assert.equal(monitor.counts['tc-lib-api-test.ResponseTimerTest.api.testParam.200'], 1);
+        assert.equal(monitor.counts['tc-lib-api-test.ResponseTimerTest.api.testParam.all'], 1);
+
+        assert.equal(Object.keys(monitor.measures).length, 2);
+        assert(monitor.measures['tc-lib-api-test.ResponseTimerTest.api.testParam.200'] > 0.0);
+        assert(monitor.measures['tc-lib-api-test.ResponseTimerTest.api.testParam.all'] > 0.0);
       });
   });
 });

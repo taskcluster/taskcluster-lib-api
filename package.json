@@ -32,6 +32,7 @@
     "superagent-hawk": "0.0.4",
     "superagent-promise": "0.1.2",
     "taskcluster-client": "0.23.4",
+    "taskcluster-lib-monitor": "^0.3.0",
     "taskcluster-lib-scopes": "^0.8.8",
     "taskcluster-lib-stats": "^0.8.7",
     "type-is": "^1.6.10",

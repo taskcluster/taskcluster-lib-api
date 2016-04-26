@@ -13,9 +13,9 @@ var path          = require('path');
 var fs            = require('fs');
 require('superagent-hawk')(require('superagent'));
 var request       = require('superagent-promise');
-// Someone should rename utils to scopes... 
-var utils         = require('taskcluster-lib-scopes');
 var stats         = require('taskcluster-lib-stats');
+var scopes        = require('taskcluster-lib-scopes');
+var monitoring    = require('taskcluster-lib-monitor');
 var crypto        = require('crypto');
 var series        = require('taskcluster-lib-stats/lib/series');
 var cryptiles     = require('cryptiles');
@@ -449,7 +449,7 @@ var remoteAuthentication = function(options, entry) {
         }
 
         // Test that we have scope intersection, and hence, is authorized
-        var retval = utils.scopeMatch(result.scopes, scopesets);
+        var retval = scopes.scopeMatch(result.scopes, scopesets);
         if (!retval && !noReply) {
           res.reportError('InsufficientScopes', [
             "You do not have sufficient scopes. This request requires you",
@@ -462,7 +462,7 @@ var remoteAuthentication = function(options, entry) {
             "In other words you are missing scopes from one of the options:"
           ].concat(scopesets.map((set, index) => {
             let missing = set.filter(scope => {
-              return !utils.scopeMatch(result.scopes, [[scope]]);
+              return !scopes.scopeMatch(result.scopes, [[scope]]);
             });
             return ' * Option ' + index + ':\n    - "' +
                    missing.join('", and\n    - "') + '"';
@@ -642,7 +642,7 @@ API.prototype.declare = function(options, handler) {
     }
   });
   if ('scopes' in options) {
-    utils.validateScopeSets(options.scopes);
+    scopes.validateScopeSets(options.scopes);
   }
   options.handler = handler;
   if (options.input) {
@@ -668,6 +668,7 @@ API.prototype.declare = function(options, handler) {
  *   raven:               null,   // optional raven.Client for error reporting
  *   component:           'queue',      // Name of the component in stats
  *   drain:               new Influx()  // drain for statistics
+ *   monitor:             await require('taskcluster-lib-monitor')({...}),
  * }
  *
  * The option `validator` must provided.
@@ -708,11 +709,16 @@ API.prototype.router = function(options) {
                     "supported; use remote signature validation");
   }
 
-  // Create statistics reporter
+  // Create statistics reporters
   var reporter = null;
   if (options.drain) {
     assert(options.component, "The component must be named in statistics!");
     reporter = series.ResponseTimes.reporter(options.drain);
+  }
+  var monitor = null;
+  if (options.monitor) {
+    assert(options.component, "The component must be named for monitoring!");
+    monitor = options.monitor.prefix(options.component + '.api');
   }
 
   // Create router
@@ -755,6 +761,34 @@ API.prototype.router = function(options) {
         method:     entry.name,
         component:  options.component
       }));
+    }
+    if (monitor) {
+      middleware.push( (req, res, next) => {
+        let sent = false;
+        let start = process.hrtime();
+        let send = () => {
+          try {
+            // Avoid sending twice
+            if (sent) {
+              return;
+            }
+            sent = true;
+
+            let d = process.hrtime(start);
+
+          for (let statusCode of [res.statusCode, 'all']) {
+            let k = entry.name + '.' + statusCode;
+            monitor.measure(k, d[0] * 1000 + (d[1] / 1000000));
+            monitor.count(k);
+          }
+          } catch (e) {
+            debug("Error while compiling response times: %s, %j", err, err, err.stack);
+          }
+        };
+        res.once('finish', send);
+        res.once('close', send);
+        next();
+      });
     }
 
     // Add authentication, schema validation and handler
