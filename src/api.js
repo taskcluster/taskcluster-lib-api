@@ -84,8 +84,8 @@ var parameterValidator = function(options) {
  *
  * options:
  * {
- *   input:    'http://schemas...input-schema.json',   // optional, null if no input
- *   output:   'http://schemas...output-schema.json',  // optional, null if no output
+ *   input:    'https://schemas...input-schema.json',  // optional, null if no input
+ *   output:   'https://schemas...output-schema.json', // optional, null if no output
  *   skipInputValidation:    true,                     // defaults to false
  *   skipOutputValidation:   true,                     // defaults to false
  * }
@@ -503,7 +503,7 @@ var handle = function(handler, context) {
  * {
  *   title:         "API Title",
  *   description:   "API description in markdown",
- *   schemaPrefix:  "http://schemas..../queue/",    // Prefix for all schemas
+ *   schemaPrefix:  "https://schemas..../queue/",   // Prefix for all schemas
  *   params: {                                      // Patterns for URL params
  *     param1:  /.../,                // Reg-exp pattern
  *     param2(val) { return "..." }   // Function, returns message if invalid
@@ -814,7 +814,7 @@ API.prototype.reference = function(options) {
   assert(options.baseUrl, "A 'baseUrl' must be provided");
   var reference = {
     version:            0,
-    '$schema':          'http://schemas.taskcluster.net/base/v1/' +
+    '$schema':          'https://schemas.taskcluster.net/base/v1/' +
                         'api-reference.json#',
     title:              this._options.title,
     description:        this._options.description,
@@ -861,7 +861,7 @@ API.prototype.reference = function(options) {
   var validate = ajv.compile(JSON.parse(schema));
 
   // Check against it
-  var refSchema = 'http://schemas.taskcluster.net/base/v1/api-reference.json#';
+  var refSchema = 'https://schemas.taskcluster.net/base/v1/api-reference.json#';
   var valid = validate(reference, refSchema);
   if (!valid) {
     debug("API.references(): Failed to validate against schema, errors: %j " +
