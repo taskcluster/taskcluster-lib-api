@@ -53,7 +53,7 @@
     "taskcluster-lib-testing": "^0.10.1",
     "taskcluster-lib-app": "^0.8.9",
     "taskcluster-lib-monitor": "^1.0.1",
-    "taskcluster-lib-validate": "^0.4.2",
+    "taskcluster-lib-validate": "^1.0.2",
     "tc-rules": "^2.0.0"
   },
   "main": "./lib/api.js"
