@@ -28,7 +28,7 @@
     "promise": "^7.0.4",
     "slugid": "^1.1.0",
     "source-map-support": "^0.3.3",
-    "superagent": "0.18.2",
+    "superagent": "2.0.0",
     "superagent-hawk": "0.0.4",
     "superagent-promise": "0.1.2",
     "taskcluster-client": "0.23.4",
