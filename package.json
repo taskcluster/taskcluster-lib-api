@@ -18,7 +18,7 @@
     "ajv": "^3.8.5",
     "aws-sdk": "^2.1.21",
     "aws-sdk-promise": "0.0.2",
-    "babel-runtime": "^6.3.19",
+    "babel-runtime": "^6.9.1",
     "body-parser": "1.13.3",
     "cryptiles": "^2.0.4",
     "debug": "^2.2.0",
