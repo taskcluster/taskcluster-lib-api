@@ -47,7 +47,7 @@
     "babel-plugin-transform-regenerator": "^6.1.18",
     "babel-preset-es2015": "^6.1.18",
     "babel-preset-stage-1": "^6.3.13",
-    "eslint": "^1.9.0",
+    "eslint": "^2.11.1",
     "mocha": "2.0.1",
     "taskcluster-lib-config": "^0.8.8",
     "taskcluster-lib-testing": "^0.10.1",
