@@ -49,7 +49,7 @@ suite("api/publish", function() {
         Key:        'base/test/api.json'
       }).promise();
     }).then(function(res) {
-      var reference = JSON.parse(res.data.Body);
+      var reference = JSON.parse(res.Body);
       assert(reference.entries, "Missing entries");
       assert(reference.entries.length > 0, "Has no entries");
       assert(reference.title, "Missing title");
@@ -108,7 +108,7 @@ suite("api/publish", function() {
         Key:        'base/test/simple-api.json'
       }).promise();
     }).then(function(res) {
-      var reference = JSON.parse(res.data.Body);
+      var reference = JSON.parse(res.Body);
       assert(reference.entries, "Missing entries");
       assert(reference.entries.length == 1, "Should have one entry");
       assert(reference.title, "Missing title");
