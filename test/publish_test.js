@@ -1,7 +1,7 @@
 suite("api/publish", function() {
   var subject         = require('../');
   var config          = require('taskcluster-lib-config');
-  var aws             = require('aws-sdk-promise');
+  var aws             = require('aws-sdk');
   var assert          = require('assert');
   var Promise         = require('promise');
   var mockAuthServer  = require('taskcluster-lib-testing/.test/mockauthserver');
