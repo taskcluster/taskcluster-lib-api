@@ -20,6 +20,7 @@ var taskcluster   = require('taskcluster-client');
 var Ajv           = require('ajv');
 var errors        = require('./errors');
 var typeis        = require('type-is');
+var ping          = require('ping');
 
 // Default baseUrl for authentication server
 var AUTH_BASE_URL = 'https://auth.taskcluster.net/v1';
@@ -555,7 +556,7 @@ var API = function(options) {
     assert(/[A-Z][A-Za-z0-9]*/.test(key), 'Invalid error code: ' + key)
     assert(typeof(value) === 'number', 'Expected HTTP status code to be int');
   });
-  this._entries = [];
+  this._entries = [ping];
 };
 
 /** Stability levels offered by API method */
@@ -670,7 +671,7 @@ API.prototype.declare = function(options, handler) {
   if (options.output && options.output !== 'blob') {
     options.output = this._options.schemaPrefix + options.output;
   }
-  this._entries.push(options);
+  this._entries.unshift(options);
 };
 
 /**
