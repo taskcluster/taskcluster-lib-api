@@ -1,13 +1,13 @@
 let API = require('taskcluster-lib-api');
 
-var api = new API({
+var ping = new API({
   title:      "Ping API",
   description: [
     "Single ping API for all tools"
   ].join('\n')
 });
 
-api.declare({
+ping.declare({
   method:   'get',
   route:    '/ping',
   name:     'ping',
@@ -24,4 +24,4 @@ api.declare({
   });
 });
 
-module.exports = api;
+module.exports = ping;
