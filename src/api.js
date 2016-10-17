@@ -20,7 +20,7 @@ var taskcluster   = require('taskcluster-client');
 var Ajv           = require('ajv');
 var errors        = require('./errors');
 var typeis        = require('type-is');
-var ping          = require('ping.js');
+var ping          = require('./ping.js');
 
 // Default baseUrl for authentication server
 var AUTH_BASE_URL = 'https://auth.taskcluster.net/v1';
