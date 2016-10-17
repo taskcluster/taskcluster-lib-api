@@ -20,7 +20,6 @@ var taskcluster   = require('taskcluster-client');
 var Ajv           = require('ajv');
 var errors        = require('./errors');
 var typeis        = require('type-is');
-var ping          = require('./ping.js');
 
 // Default baseUrl for authentication server
 var AUTH_BASE_URL = 'https://auth.taskcluster.net/v1';
@@ -556,7 +555,24 @@ var API = function(options) {
     assert(/[A-Z][A-Za-z0-9]*/.test(key), 'Invalid error code: ' + key)
     assert(typeof(value) === 'number', 'Expected HTTP status code to be int');
   });
-  this._entries = [ping];
+  this._entries = [
+    {
+      method:   'get',
+      route:    '/ping',
+      name:     'ping',
+      stability:  'stable',
+      title:    'Ping Server',
+      description: [
+          'Respond without doing anything.',
+          'This endpoint is used to check that the service is up.'
+        ].join('\n'),
+      handler: function(req, res) {
+          res.status(200).json({
+            alive:    true,
+            uptime:   process.uptime()
+            });
+        }
+     }];
 };
 
 /** Stability levels offered by API method */
