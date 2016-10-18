@@ -24,6 +24,24 @@ var typeis        = require('type-is');
 // Default baseUrl for authentication server
 var AUTH_BASE_URL = 'https://auth.taskcluster.net/v1';
 
+var ping = {
+  method:   'get',
+  route:    '/ping',
+  name:     'ping',
+  stability:  'stable',
+  title:    'Ping Server',
+  description: [
+    'Respond without doing anything.',
+    'This endpoint is used to check that the service is up.'
+  ].join('\n'),
+  handler: function(req, res) {
+    res.status(200).json({
+      alive:    true,
+      uptime:   process.uptime()
+    });
+  }
+};
+
 /**
  * Create parameter validation middle-ware instance, given a mapping from
  * parameter to regular expression or function that returns a message as string
@@ -555,24 +573,7 @@ var API = function(options) {
     assert(/[A-Z][A-Za-z0-9]*/.test(key), 'Invalid error code: ' + key)
     assert(typeof(value) === 'number', 'Expected HTTP status code to be int');
   });
-  this._entries = [
-    {
-      method:   'get',
-      route:    '/ping',
-      name:     'ping',
-      stability:  'stable',
-      title:    'Ping Server',
-      description: [
-          'Respond without doing anything.',
-          'This endpoint is used to check that the service is up.'
-        ].join('\n'),
-      handler: function(req, res) {
-          res.status(200).json({
-            alive:    true,
-            uptime:   process.uptime()
-            });
-        }
-     }];
+  this._entries = [];
 };
 
 /** Stability levels offered by API method */
@@ -687,7 +688,7 @@ API.prototype.declare = function(options, handler) {
   if (options.output && options.output !== 'blob') {
     options.output = this._options.schemaPrefix + options.output;
   }
-  this._entries.unshift(options);
+  this._entries.push(options);
 };
 
 /**
@@ -785,6 +786,8 @@ API.prototype.router = function(options) {
     });
   }
 
+  this._entries.push(ping);
+
   // Add entries to router
   this._entries.forEach(entry => {
     // Route pattern
@@ -850,6 +853,7 @@ API.prototype.router = function(options) {
 API.prototype.reference = function(options) {
   assert(options,         "Options is required");
   assert(options.baseUrl, "A 'baseUrl' must be provided");
+  this._entries.push(ping);
   var reference = {
     version:            0,
     '$schema':          'http://schemas.taskcluster.net/base/v1/' +
