@@ -786,10 +786,8 @@ API.prototype.router = function(options) {
     });
   }
 
-  this._entries.push(ping);
-
   // Add entries to router
-  this._entries.forEach(entry => {
+  _.concat(this._entries, [ping]).forEach(entry => {
     // Route pattern
     var middleware = [entry.route];
 
@@ -853,7 +851,6 @@ API.prototype.router = function(options) {
 API.prototype.reference = function(options) {
   assert(options,         "Options is required");
   assert(options.baseUrl, "A 'baseUrl' must be provided");
-  this._entries.push(ping);
   var reference = {
     version:            0,
     '$schema':          'http://schemas.taskcluster.net/base/v1/' +
@@ -861,7 +858,7 @@ API.prototype.reference = function(options) {
     title:              this._options.title,
     description:        this._options.description,
     baseUrl:            options.baseUrl,
-    entries: this._entries.map(function(entry) {
+    entries: _.concat(this._entries, [ping]).map(function(entry) {
       // Find parameters for entry
       var params  = [];
       // Note: express uses the NPM module path-to-regexp for parsing routes
