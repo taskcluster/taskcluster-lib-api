@@ -266,6 +266,14 @@ var createRemoteSignatureValidator = function(options) {
   };
 };
 
+/** Log an authorization, but only if this is a production run of the service
+ *
+ * This should emit structured logging, when that is supported.
+ * See https://bugzilla.mozilla.org/show_bug.cgi?id=1307271
+ */
+
+var logAuthz = process.env.NODE_ENV === 'production' ? console.log : debug;
+
 /**
  * Authenticate client using remote API end-point and validate that he satisfies
  * one of the sets of scopes required. Skips validation if `options.scopes` is
@@ -462,9 +470,7 @@ var remoteAuthentication = function(options, entry) {
         // Test that we have scope intersection, and hence, is authorized
         var retval = scopes.scopeMatch(result.scopes, scopesets);
         if (retval) {
-          // TODO: log this in a structured format when structured logging is
-          // available https://bugzilla.mozilla.org/show_bug.cgi?id=1307271
-          console.log(
+          logAuthz(
               `Authorized ${clientId} for ${req.method} access to ${req.originalUrl}`)
         }
         if (!retval && !noReply) {
