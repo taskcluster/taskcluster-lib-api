@@ -950,6 +950,28 @@ API.prototype.publish = function(options) {
   }).promise();
 };
 
+API.prototype.writeFile = function(options) {
+  // Provide default options
+  options = _.defaults({}, options, {
+    referenceBucket:    'references.taskcluster.net'
+  });
+  // Check that required options are provided
+  ['baseUrl', 'referencePrefix', 'aws'].forEach(function(key) {
+    assert(options[key], "Option '" + key + "' must be provided");
+  });
+
+  let content = JSON.stringify(this.reference(options), undefined, 2);
+  
+  return new Promise((resolve, reject) => {
+    fs.writeFile('api-reference.json', content, err => {
+      if (err) {
+        reject(err);
+      }
+      resolve();
+    })
+  });
+};
+
 /**
  * Setup API, by publishing reference and returning an `express.Router`.
  *
@@ -962,6 +984,7 @@ API.prototype.publish = function(options) {
  *   nonceManager:        function(nonce, ts, cb) { // Check for replay attack
  *   authBaseUrl:         'http://auth.example.net' // BaseUrl for auth server
  *   publish:             true,                    // Publish API reference
+ *   writeFile:           false, // Write api reference locally for debugging
  *   baseUrl:             'https://example.com/v1' // URL under which routes are mounted
  *   referencePrefix:     'queue/v1/api.json'      // Prefix within S3 bucket
  *   referenceBucket:     'reference.taskcluster.net',
@@ -981,6 +1004,9 @@ API.prototype.setup = function(options) {
   return Promise.resolve(null).then(function() {
     if (options.publish) {
       return that.publish(options);
+    }
+    if (options.writeFile || process.env.WRITE_API_REFERENCE_FILE) {
+      return that.writeFile(options);
     }
   }).then(function() {
     return that.router(options);
