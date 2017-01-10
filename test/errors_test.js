@@ -80,6 +80,10 @@ suite("api/errors", function() {
     title:    "Test End-Point",
     input:    'http://localhost:4321/test-schema.json',
     description:  "Place we can call to test something",
+    cleanPayload: payload => {
+      payload.secret = '<HIDDEN>';
+      return payload;
+    },
   }, function(req, res) {
   });
 
@@ -92,12 +96,14 @@ suite("api/errors", function() {
     assert(res.statusCode === 400);
     let response = JSON.parse(res.text);
     assert(response.code === 'InputValidationError');
-    assert(/s3kr!t/.test(response.message)); // payload appears in message
+    console.log(response.message);
+    assert(/<HIDDEN>/.test(response.message)); // replaced payload appears in message
+    assert(!/s3kr!t/.test(response.message)); // secret does not appear in message
     delete response.requestInfo['time'];
     assert(_.isEqual(response.requestInfo, {
       method: 'InputValidationError',
       params: {},
-      payload: {'invalid': 'yep', 'secret': 's3kr!t'},
+      payload: {'invalid': 'yep', 'secret': '<HIDDEN>'},
     }));
     assert(_.isEqual(response.details, {
       schema: 'http://localhost:4321/test-schema.json',

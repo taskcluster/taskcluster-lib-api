@@ -645,7 +645,9 @@ var STABILITY_LEVELS = _.values(stability);
  *   title:     "My API Method",
  *   description: [
  *     "Description of method in markdown, enjoy"
- *   ].join('\n')
+ *   ].join('\n'),
+ *   cleanPayload: payload => payload,           // function to 'clean' the payload for
+ *                                               // error messages (e.g., remove secrets)
  * }
  *
  * The handler parameter is a normal connect/express request handler, it should
@@ -795,7 +797,8 @@ API.prototype.router = function(options) {
     // Add authentication, schema validation and handler
     middleware.push(
       errors.BuildReportErrorMethod(
-        entry.name, this._options.errorCodes, (monitor || options.raven)
+        entry.name, this._options.errorCodes, (monitor || options.raven),
+        entry.cleanPayload
       ),
       bodyParser.text({
         limit:          options.inputLimit,
