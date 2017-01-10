@@ -101,7 +101,6 @@ suite("api/errors", function() {
     }));
     assert(_.isEqual(response.details, {
       schema: 'http://localhost:4321/test-schema.json',
-       payload: {invalid: 'yep', secret: 's3kr!t'},
     }));
   });
 });

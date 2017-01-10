@@ -133,10 +133,7 @@ var schema = function(validate, options) {
         return res.reportError(
           'InputValidationError',
           error,
-        {
-          schema: options.input,
-          payload: req.body
-        });
+        {schema: options.input});
       }
     }
     // Add a reply method sending JSON replies, this will always reply with HTTP
