@@ -35,7 +35,7 @@ suite("api/errors", function() {
     assert(res.statusCode === 400);
     let response = JSON.parse(res.text);
     assert(response.code === 'InputError');
-    assert(response.message.startsWith('Testing Error\n----\n'));
+    assert(/Testing Error\n----\n/.test(response.message));
     delete response.requestInfo['time'];
     assert(_.isEqual(response.requestInfo, {
       method: 'InputError',
@@ -63,7 +63,7 @@ suite("api/errors", function() {
     assert(res.statusCode === 500);
     let response = JSON.parse(res.text);
     assert(response.code === 'InternalServerError');
-    assert(response.message.startsWith('Internal'));
+    assert(/^Internal/.test(response.message));
     assert(!/uhoh/.test(response.message)); // error doesn't go to user
     delete response.requestInfo['time'];
     assert(_.isEqual(response.requestInfo, {
