@@ -79,20 +79,10 @@ suite("api/errors", function() {
         "  4",
         "]",
         "----",
+        "method:     toomanyfoos",
         "errorCode:  TooManyFoos",
         "statusCode: 472",
-        "requestInfo:",
-        "  method:   toomanyfoos",
-        "  params:   {}",
-        "  payload:  {",
-        "  \"foos\": [",
-        "    1,",
-        "    2,",
-        "    3,",
-        "    4",
-        "  ]",
-        "}",
-        "  time:     <nowish>",
+        "time:       <nowish>",
       ].join('\n'),
       requestInfo: {
         method: "toomanyfoos",
@@ -155,10 +145,9 @@ suite("api/errors", function() {
       .end();
     assert(res.statusCode === 400);
     let response = JSON.parse(res.text);
+    assert(!/s3kr!t/.test(res.text)); // secret does not appear in response
     assert(response.code === 'InputValidationError');
-    console.log(response.message);
-    assert(/<HIDDEN>/.test(response.message)); // replaced payload appears in message
-    assert(!/s3kr!t/.test(response.message)); // secret does not appear in message
+    assert(response.requestInfo.payload.secret == '<HIDDEN>'); // replaced payload appears in response
     delete response.requestInfo['time'];
     assert(_.isEqual(response.requestInfo, {
       method: 'InputValidationError',

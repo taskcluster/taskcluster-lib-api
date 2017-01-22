@@ -62,13 +62,10 @@ let BuildReportErrorMethod = (method, errorCodes, monitor, cleanPayload) => {
         return value;
       }) + [
         '\n----',
+        'method:     ' + method,
         'errorCode:  ' + code,
         'statusCode: ' + status,
-        'requestInfo:',
-        '  method:   ' + requestInfo.method,
-        '  params:   ' + JSON.stringify(requestInfo.params),
-        '  payload:  ' + JSON.stringify(payload, null, 2),
-        '  time:     ' + requestInfo.time,
+        'time:       ' + requestInfo.time,
       ].join('\n');
       res.status(status).json({code, message, requestInfo});
     };

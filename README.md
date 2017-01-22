@@ -290,13 +290,10 @@ The resulting HTTP response will have a JSON body containing (whitespace adjuste
       4
     ]
     ----
+    method:     toomanyfoos
     errorCode:  TooManyFoos
     statusCode: 472
-    requestInfo:
-      method:   toomanyfoos
-      params:   {}
-      payload:  {\"foos\": [1,2,3,4]}
-      time:     2017-01-22T21:20:16.650Z",
+    time:       2017-01-22T21:20:16.650Z",
   "requestInfo":{
     "method": "toomanyfoos",
     "params": {},
