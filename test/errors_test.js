@@ -11,6 +11,7 @@ suite("api/errors", function() {
   var api = new subject({
     title:        "Test Api",
     description:  "Yet another test api",
+    errorCodes: {TooManyFoos: 472},
   });
 
   // Create a mock authentication server
@@ -36,6 +37,7 @@ suite("api/errors", function() {
     let response = JSON.parse(res.text);
     assert(response.code === 'InputError');
     assert(/Testing Error\n----\n/.test(response.message));
+    assert(!/details:/.test(response.message)); // no details in message..
     delete response.requestInfo['time'];
     assert(_.isEqual(response.requestInfo, {
       method: 'InputError',
@@ -43,6 +45,69 @@ suite("api/errors", function() {
       payload: {},
     }));
     assert(_.isEqual(response.details, {dee: 'tails'}));
+  });
+
+  api.declare({
+    method:   'get',
+    route:    '/toomanyfoos',
+    name:     'toomanyfoos',
+    title:    "Test End-Point",
+    description:  "Place we can call to test something",
+  }, function(req, res) {
+    req.body.foos = [1, 2, 3, 4];
+    res.reportError(
+      'TooManyFoos',
+      'You can only have 3 foos.  You provided:\n{{foos}}',
+      {foos: req.body.foos});
+  });
+
+  test("TooManyFoos response", async function() {
+    let url = 'http://localhost:23525/toomanyfoos';
+    let res = await request
+      .get(url)
+      .end();
+    assert(res.statusCode === 472);
+    let response = JSON.parse(res.text);
+    response.message = response.message.replace(response.requestInfo.time, '<nowish>');
+    response.requestInfo.time = '<nowish>';
+    assert(_.isEqual(response, {
+      code: "TooManyFoos",
+      message: [
+        "You can only have 3 foos.  You provided:",
+        "[",
+        "  1,",
+        "  2,",
+        "  3,",
+        "  4",
+        "]",
+        "----",
+        "errorCode:  TooManyFoos",
+        "statusCode: 472",
+        "requestInfo:",
+        "  method:   toomanyfoos",
+        "  params:   {}",
+        "  payload:  {",
+        "  \"foos\": [",
+        "    1,",
+        "    2,",
+        "    3,",
+        "    4",
+        "  ]",
+        "}",
+        "  time:     <nowish>",
+      ].join('\n'),
+      requestInfo: {
+        method: "toomanyfoos",
+        params: {},
+        payload: {
+          foos: [1, 2, 3, 4]
+        },
+        time: "<nowish>"
+      },
+      details: {
+        foos: [1, 2, 3, 4]
+      }
+    }));
   });
 
   api.declare({

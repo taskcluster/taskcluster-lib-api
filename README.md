@@ -273,8 +273,38 @@ into `details`, with the result being JSON-encoded.  For example:
 ```js
 res.reportError(
   'TooManyFoos',
-  'You can only have 7 foos.  You provided:\n{{foos}}',
+  'You can only have 3 foos.  You provided:\n{{foos}}',
   {foos: req.body.foos})
+```
+
+The resulting HTTP response will have a JSON body containing (whitespace adjusted)
+```js
+{
+  "code": "TooManyFoos",
+  "message": "You can only have 3 foos.
+    You provided:
+    [
+      1,
+      2,
+      3,
+      4
+    ]
+    ----
+    errorCode:  TooManyFoos
+    statusCode: 472
+    requestInfo:
+      method:   toomanyfoos
+      params:   {}
+      payload:  {\"foos\": [1,2,3,4]}
+      time:     2017-01-22T21:20:16.650Z",
+  "requestInfo":{
+    "method": "toomanyfoos",
+    "params": {},
+    "payload": {"foos":[1,2,3,4]},
+    "time": "2017-01-22T21:20:16.650Z",
+  },
+  "details": {"foos":[1,2,3,4]}
+}
 ```
 
 *Note:* use of `res.status(4..).json(..)` to return error statuses is an
