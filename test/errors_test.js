@@ -37,14 +37,12 @@ suite("api/errors", function() {
     let response = JSON.parse(res.text);
     assert(response.code === 'InputError');
     assert(/Testing Error\n----\n/.test(response.message));
-    assert(!/details:/.test(response.message)); // no details in message..
     delete response.requestInfo['time'];
     assert(_.isEqual(response.requestInfo, {
       method: 'InputError',
       params: {},
       payload: {},
     }));
-    assert(_.isEqual(response.details, {dee: 'tails'}));
   });
 
   api.declare({
@@ -104,9 +102,6 @@ suite("api/errors", function() {
         },
         time: "<nowish>"
       },
-      details: {
-        foos: [1, 2, 3, 4]
-      }
     }));
   });
 
@@ -169,9 +164,6 @@ suite("api/errors", function() {
       method: 'InputValidationError',
       params: {},
       payload: {'invalid': 'yep', 'secret': '<HIDDEN>'},
-    }));
-    assert(_.isEqual(response.details, {
-      schema: 'http://localhost:4321/test-schema.json',
     }));
   });
 });

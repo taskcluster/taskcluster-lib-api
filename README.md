@@ -303,7 +303,6 @@ The resulting HTTP response will have a JSON body containing (whitespace adjuste
     "payload": {"foos":[1,2,3,4]},
     "time": "2017-01-22T21:20:16.650Z",
   },
-  "details": {"foos":[1,2,3,4]}
 }
 ```
 
