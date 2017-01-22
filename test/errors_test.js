@@ -52,11 +52,11 @@ suite("api/errors", function() {
     title:    "Test End-Point",
     description:  "Place we can call to test something",
   }, function(req, res) {
-    req.body.foos = [1, 2, 3, 4];
+    req.body.foos = [4, 5];
     res.reportError(
       'TooManyFoos',
-      'You can only have 3 foos.  You provided:\n{{foos}}',
-      {foos: req.body.foos});
+      'You can only have 3 foos.  These foos already exist:\n{{foos}}',
+      {foos: [1, 2, 3]});
   });
 
   test("TooManyFoos response", async function() {
@@ -71,12 +71,11 @@ suite("api/errors", function() {
     assert(_.isEqual(response, {
       code: "TooManyFoos",
       message: [
-        "You can only have 3 foos.  You provided:",
+        "You can only have 3 foos.  These foos already exist:",
         "[",
         "  1,",
         "  2,",
-        "  3,",
-        "  4",
+        "  3",
         "]",
         "----",
         "method:     toomanyfoos",
@@ -87,9 +86,7 @@ suite("api/errors", function() {
       requestInfo: {
         method: "toomanyfoos",
         params: {},
-        payload: {
-          foos: [1, 2, 3, 4]
-        },
+        payload: {foos: [4, 5]},
         time: "<nowish>"
       },
     }));
