@@ -653,6 +653,9 @@ var STABILITY_LEVELS = _.values(stability);
  *   skipInputValidation:    true,               // defaults to false
  *   skipOutputValidation:   true,               // defaults to false
  *   title:     "My API Method",
+ *   noPublish: true                             // defaults to false, causes
+ *                                               // endpoint to be left out of api
+ *                                               // references
  *   description: [
  *     "Description of method in markdown, enjoy"
  *   ].join('\n'),
