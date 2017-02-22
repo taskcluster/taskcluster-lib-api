@@ -867,7 +867,7 @@ API.prototype.reference = function(options) {
     title:              this._options.title,
     description:        this._options.description,
     baseUrl:            options.baseUrl,
-    entries: _.concat(this._entries, [ping]).map(function(entry) {
+    entries: _.concat(this._entries, [ping]).filter(entry => !entry.noPublish).map(function(entry) {
       // Find parameters for entry
       var params  = [];
       // Note: express uses the NPM module path-to-regexp for parsing routes
