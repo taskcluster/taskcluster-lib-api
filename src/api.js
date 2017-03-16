@@ -146,9 +146,20 @@ var schema = function(validate, options) {
         {schema: options.input});
       }
     }
+
+    // We want to ensure that a dry run success returns a non-200 status
+    // code because we want dry runs to be explicitly handled.
+    res.reportDryRunSuccess = (message) => {
+      let dryRunId = uuid.v4();
+      res.status(418).json({
+        code: 418,
+        message: message || 'dry run success',
+      });
+    };
+
     // Add a reply method sending JSON replies, this will always reply with HTTP
     // code 200... errors should be sent with res.json(code, json)
-    res.reply = function(json) {
+    res.reply = function(json, dryRunMessage) {
       // If we're supposed to validate outgoing messages and output schema is
       // defined, then we have to validate against it...
       if(options.output !== undefined && !options.skipOutputValidation &&
@@ -164,7 +175,11 @@ var schema = function(validate, options) {
         }
       }
       // If JSON was valid or validation was skipped then reply with 200 OK
-      res.status(200).json(json);
+      if (req.dryRun) {
+        res.reportDryRunSuccess(dryRunMessage);
+      } else {
+        res.status(200).json(json);
+      }
     };
 
     // Call next piece of middleware, typically the handler...
@@ -816,6 +831,11 @@ API.prototype.router = function(options) {
         limit:          options.inputLimit,
         type:           'application/json'
       }), function(req, res, next) {
+        // If this request is a dry-run, add a req.dryRun value
+        req.dryRun = false;
+        if (req.query['dry-run'] === 'true') {
+          req.dryRun = true;
+        }
         // Use JSON middleware, and add hack to store text as req.text
         if (typeof(req.body) === 'string' && req.body !== '') {
           req.text = req.body;

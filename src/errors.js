@@ -85,6 +85,8 @@ let BuildReportErrorMethod = (method, errorCodes, monitor, cleanPayload) => {
         monitor.reportError(err, tags);
       }
     };
+    
+
     next();
   };
 };
