@@ -382,8 +382,8 @@ var remoteAuthentication = function(options, entry) {
     }
 
     // If no authentication is provided, we just return valid with zero scopes
-    if ((!req.query || !req.query.bewit) &&
-        (!req.headers || !req.headers.authorization)) {
+    if (entry.noAuth || ((!req.query || !req.query.bewit) &&
+        (!req.headers || !req.headers.authorization))) {
       return Promise.resolve({
         status: 'no-auth',
         scheme: 'none',
@@ -679,6 +679,10 @@ API.prototype.declare = function(options, handler) {
   if (!options.stability) {
     options.stability = stability.experimental;
   }
+  if (!options.noAuth) {
+    options.noAuth = false;
+  }
+  assert(!options.scopes || !options.noAuth, 'Cannot specify noAuth if the function has scopes');
   assert(STABILITY_LEVELS.indexOf(options.stability) !== -1,
          "options.stability must be a valid stability-level, " +
          "see base.API.stability for valid options");
