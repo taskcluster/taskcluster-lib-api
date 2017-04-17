@@ -97,6 +97,8 @@ To declare an API method, call `api.declare(options, handler)` with the followin
  * `scopes` - scopes required for this API endpoint, in disjunctive normal form (see below)
  * `deferAuth` - if true, authentication will not be checked automatically before the handler
    is invoked.  In this case, the handler must call `req.satisfies()`; see below.
+ * `noAuth` - if true, this endpoint will not be authenticated and clients should not send
+   headers or bewit
  * `stability` - API stability level, defaulting to experimental (see below)
  * `input` - the schema against which the input payload will be validated
  * `skipInputValidation` - if true, don't do input validation (but include the schema in documentation)

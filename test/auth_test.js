@@ -92,6 +92,20 @@ suite("api/auth", function() {
     }
   });
 
+  // Declare a method we can test no auth
+  api.declare({
+    method:       'get',
+    route:        '/test-no-auth',
+    name:         'testNoAuth',
+    noAuth:       true,
+    title:        "Test End-Point",
+    description:  "Place we can call to test something",
+  }, function(req, res) {
+    if(req.satisfies([req.body.scopes])) {
+      return res.status(200).json("OK");
+    }
+  });
+
   // Create a mock authentication server
   setup(async () => {
     testing.fakeauth.start({
@@ -292,6 +306,22 @@ suite("api/auth", function() {
         key:          'groupie',
         algorithm:    'sha256'
       })
+      .end()
+      .then(function(res) {
+        if(!res.ok) {
+          console.log(JSON.stringify(res.body));
+          assert(false, "Request failed");
+        }
+      });
+  });
+
+  // Test with no authentication
+  test("With no authentication", function() {
+    var url = 'http://localhost:23526/test-no-auth';
+    return request
+      .get(url)
+      .send()
+      .hawk()
       .end()
       .then(function(res) {
         if(!res.ok) {
