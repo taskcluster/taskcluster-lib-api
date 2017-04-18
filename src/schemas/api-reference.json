@@ -1,5 +1,5 @@
 {
-  "id":           "http://schemas.taskcluster.net/base/v1/api-reference.json#",
+  "id":           "https://schemas.taskcluster.net/base/v1/api-reference.json#",
   "$schema":      "http://json-schema.org/draft-04/schema#",
   "title":        "API Reference File",
   "description":  "Reference of methods implemented by API",
