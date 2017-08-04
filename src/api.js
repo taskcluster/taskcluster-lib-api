@@ -11,8 +11,6 @@ var _             = require('lodash');
 var bodyParser    = require('body-parser');
 var path          = require('path');
 var fs            = require('fs');
-require('superagent-hawk')(require('superagent'));
-var request       = require('superagent-promise');
 var scopes        = require('taskcluster-lib-scopes');
 var crypto        = require('crypto');
 var cryptiles     = require('cryptiles');

@@ -1,6 +1,5 @@
 suite("api/schemaPrefix", function() {
-  require('superagent-hawk')(require('superagent'));
-  var request         = require('superagent-promise');
+  var request         = require('superagent-hawk')(require('superagent'));
   var assert          = require('assert');
   var Promise         = require('promise');
   var testing         = require('taskcluster-lib-testing');
@@ -49,7 +48,6 @@ suite("api/schemaPrefix", function() {
     return request
       .get(url)
       .send({value: 5})
-      .end()
       .then(function(res) {
         assert(res.ok, "Request failed");
         assert(res.text === "Hello World", "Got wrong value");
@@ -62,9 +60,11 @@ suite("api/schemaPrefix", function() {
     return request
       .get(url)
       .send({value: 11})
-      .end()
       .then(function(res) {
-        assert(res.status === 400, "Request wasn't rejected");
+        assert(false, "should not have succeeded");
+      })
+      .catch(function(err) {
+        assert(err.status === 400, "Request wasn't rejected");
       });
   });
 
@@ -73,7 +73,6 @@ suite("api/schemaPrefix", function() {
     var url = 'http://localhost:23525/test-output';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, "Request okay");
         assert(res.body.value === 4, "Got wrong value");

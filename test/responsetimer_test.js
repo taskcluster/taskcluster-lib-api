@@ -1,6 +1,5 @@
 suite("api/responsetimer", function() {
-  require('superagent-hawk')(require('superagent'));
-  var request         = require('superagent-promise');
+  var request         = require('superagent-hawk')(require('superagent'));
   var assert          = require('assert');
   var Promise         = require('promise');
   var subject         = require('../');
@@ -62,10 +61,10 @@ suite("api/responsetimer", function() {
 
   test("single parameter", function() {
     return Promise.all([
-        request.get('http://localhost:23525/single-param/Hello').end(),
-        request.get('http://localhost:23525/single-param/Goodbye').end(),
-        request.get('http://localhost:23525/slash-param/Slash').end(),
-        request.get('http://localhost:23525/another-param/Another').end(),
+        request.get('http://localhost:23525/single-param/Hello').catch(err => {}), // Ignore errors
+        request.get('http://localhost:23525/single-param/Goodbye').catch(err => {}),
+        request.get('http://localhost:23525/slash-param/Slash').catch(err => {}),
+        request.get('http://localhost:23525/another-param/Another').catch(err => {}),
       ]).then(function() {
         assert.equal(Object.keys(monitor.counts).length, 6);
         assert.equal(monitor.counts['tc-lib-api-test.api.testParam.success'], 2);
