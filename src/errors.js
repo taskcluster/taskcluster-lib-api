@@ -1,6 +1,9 @@
-let uuid = require('uuid');
-let debug = require('debug')('base:api');
-let _ = require('lodash');
+import uuid from 'uuid';
+import debug from 'debug';
+import * as _ from 'lodash';
+//let uuid = require('uuid');
+//let debug = require('debug')('base:api');
+//let _ = require('lodash');
 
 const ERROR_CODES = {
   MalformedPayload:         400,  // Only for JSON.parse() errors
@@ -17,8 +20,8 @@ const ERROR_CODES = {
 };
 
 // Export ERROR_CODES
-exports.ERROR_CODES = ERROR_CODES;
-
+// exports.ERROR_CODES = ERROR_CODES;
+export {ERROR_CODES}
 /**
  * Middleware that adds `res.reportError(code, message, details)` and
  * `res.reportInternalError(error)`.
@@ -90,4 +93,5 @@ let BuildReportErrorMethod = (method, errorCodes, monitor, cleanPayload) => {
 };
 
 // Export BuildReportErrorMethod
-exports.BuildReportErrorMethod = BuildReportErrorMethod;
+// exports.BuildReportErrorMethod = BuildReportErrorMethod;
+export {BuildReportErrorMethod}
