@@ -1,11 +1,19 @@
+import * as helper from  './helper';
+import subject from '../';
+import request from 'superagent-promise';
+import assert from 'assert';
+import Promise from 'promise';
+import slugid from 'slugid';
+import 'superagent-hawk';
+import 'superagent';
 suite("api/route", function() {
-  require('superagent-hawk')(require('superagent'));
-  var request         = require('superagent-promise');
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var subject         = require('../');
-  var slugid          = require('slugid');
-  var helper          = require('./helper');
+  // require('superagent-hawk')(require('superagent'));
+  // var request         = require('superagent-promise');
+  // var assert          = require('assert');
+  // var Promise         = require('promise');
+  // var subject         = require('../');
+  // var slugid          = require('slugid');
+  // var helper          = require('./helper');
 
   // Create test api
   var api = new subject({
