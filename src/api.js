@@ -152,7 +152,7 @@ var schema = function(validate, options) {
     // code 200... errors should be sent with res.json(code, json)
     res.reply = function(json) {
       // If we're supposed to validate outgoing messages and output schema is
-      // defined, then we have to validate _against it...
+      // defined, then we have to validate against it...
       if(options.output !== undefined && !options.skipOutputValidation &&
          options.output !== 'blob') {
         var error = validate(json, options.output);
@@ -566,6 +566,7 @@ var handle = function(handler, context, name) {
  * is called it'll use the currently defined entries to mount or publish the
  * API.
  */
+ //Export API
 export default function API(options) {
   ['title', 'description'].forEach(function(key) {
     assert(options[key], "Option '" + key + "' must be provided");
@@ -1002,9 +1003,6 @@ API.prototype.setup = function(options) {
   });
 };
 
-// Export API
-// module.exports = API;
-//export default API;
 // Export middleware utilities
 API.schema        = schema;
 API.handle        = handle;

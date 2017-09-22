@@ -20,7 +20,6 @@ const ERROR_CODES = {
 };
 
 // Export ERROR_CODES
-// exports.ERROR_CODES = ERROR_CODES;
 export {ERROR_CODES}
 /**
  * Middleware that adds `res.reportError(code, message, details)` and
@@ -93,5 +92,4 @@ let BuildReportErrorMethod = (method, errorCodes, monitor, cleanPayload) => {
 };
 
 // Export BuildReportErrorMethod
-// exports.BuildReportErrorMethod = BuildReportErrorMethod;
 export {BuildReportErrorMethod}
