@@ -6,15 +6,7 @@ import Promise from 'promise';
 import testing from 'taskcluster-lib-testing';
 import validator from 'taskcluster-lib-validate';
 suite("api/schemaPrefix", function() {
-  // require('superagent-hawk')(require('superagent'));
-  // var request         = require('superagent-promise');
-  // var assert          = require('assert');
-  // var Promise         = require('promise');
-  // var testing         = require('taskcluster-lib-testing');
-  // var validator       = require('taskcluster-lib-validate');
-  // var subject         = require('../');
-  // var helper          = require('./helper');
-
+  
   // Create test api
   var api = new subject({
     title:        "Test Api",

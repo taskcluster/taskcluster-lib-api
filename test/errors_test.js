@@ -7,13 +7,6 @@ import * as helper from  './helper';
 import 'superagent-hawk';
 import 'superagent';
 suite("api/errors", function() {
-  // require('superagent-hawk')(require('superagent'));
-  // var request         = require('superagent-promise');
-  // var assert          = require('assert');
-  // var Promise         = require('promise');
-  // var subject         = require('../');
-  // var helper          = require('./helper');
-  // var _               = require('lodash');
 
   // Create test api
   var api = new subject({

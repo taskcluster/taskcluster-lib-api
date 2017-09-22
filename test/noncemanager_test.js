@@ -3,10 +3,6 @@ import assert from 'assert';
 import Promise from 'promise';
 import debug from 'debug';
 suite("nonceManager test", function() {
-  //var subject         = require('../');
-  // var assert          = require('assert');
-  // var Promise         = require('promise');
-  // var debug           = require('debug')('base:test:nonceManager');
 
   // Create a new nonceManager for each test
   var nonceManager = null;

@@ -4,11 +4,6 @@ import aws from 'aws-sdk';
 import assert from 'assert';
 import Promise from 'promise';
 suite("api/publish", function() {
-  // var subject         = require('../');
-  // var config          = require('taskcluster-lib-config');
-  // var aws             = require('aws-sdk');
-  // var assert          = require('assert');
-  // var Promise         = require('promise');
 
   var cfg = config({
     envs: [

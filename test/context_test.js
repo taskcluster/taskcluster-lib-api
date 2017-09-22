@@ -7,14 +7,6 @@ import request from 'superagent-promise';
 import  slugid from 'slugid';
 import path from 'path';
 suite("API (context)", function() {
-  // var validator       = require('taskcluster-lib-validate');
-  // var makeApp         = require('taskcluster-lib-app');
-  // var subject         = require('../');
-  // var assert          = require('assert');
-  // var Promise         = require('promise');
-  // var request         = require('superagent-promise');
-  // var slugid          = require('slugid');
-  // var path            = require('path');
 
   test("Provides context", async () => {
     // Create test api
