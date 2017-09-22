@@ -1,8 +1,13 @@
-var testing         = require('taskcluster-lib-testing');
-var validate        = require('taskcluster-lib-validate');
-var assert          = require('assert');
-var path            = require('path');
-var express         = require('express');
+import testing from 'taskcluster-lib-testing';
+import validate from 'taskcluster-lib-validate';
+import assert from 'assert';
+import path from 'path';
+import express from 'express';
+// var testing         = require('taskcluster-lib-testing');
+// var validate        = require('taskcluster-lib-validate');
+// var assert          = require('assert');
+// var path            = require('path');
+// var express         = require('express');
 
 var runningServer = null;
 
