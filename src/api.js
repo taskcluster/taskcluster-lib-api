@@ -1,25 +1,27 @@
 "use strict";
 
-var express       = require('express');
-var Debug         = require('debug');
-var Promise       = require('promise');
-var uuid          = require('uuid');
-var hawk          = require('hawk');
-var aws           = require('aws-sdk');
-var assert        = require('assert');
-var _             = require('lodash');
-var bodyParser    = require('body-parser');
-var path          = require('path');
-var fs            = require('fs');
-require('superagent-hawk')(require('superagent'));
-var request       = require('superagent-promise');
-var scopes        = require('taskcluster-lib-scopes');
-var crypto        = require('crypto');
-var cryptiles     = require('cryptiles');
-var taskcluster   = require('taskcluster-client');
-var Ajv           = require('ajv');
-var errors        = require('./errors');
-var typeis        = require('type-is');
+import * as express from 'express';
+import * as _ from 'lodash';
+import * as scopes from 'taskcluster-lib-scopes';
+import * as errors from  './errors';
+import Debug from 'debug';
+import Promise from 'promise';
+import uuid from 'uuid';
+import hawk from 'hawk';
+import aws from 'aws-sdk';
+import assert from 'assert';
+import bodyParser from 'body-parser';
+import path from 'path';
+import fs from 'fs';
+import request from 'superagent-promise';
+import crypto from 'crypto';
+import cryptiles from 'cryptiles';
+import taskcluster from 'taskcluster-client';
+import Ajv from 'ajv';
+import typeis from 'type-is';
+import 'superagent-hawk';
+import 'superagent';
+  
 
 // Default baseUrl for authentication server
 var AUTH_BASE_URL = 'https://auth.taskcluster.net/v1';
@@ -150,7 +152,7 @@ var schema = function(validate, options) {
     // code 200... errors should be sent with res.json(code, json)
     res.reply = function(json) {
       // If we're supposed to validate outgoing messages and output schema is
-      // defined, then we have to validate against it...
+      // defined, then we have to validate _against it...
       if(options.output !== undefined && !options.skipOutputValidation &&
          options.output !== 'blob') {
         var error = validate(json, options.output);
@@ -564,7 +566,7 @@ var handle = function(handler, context, name) {
  * is called it'll use the currently defined entries to mount or publish the
  * API.
  */
-var API = function(options) {
+export default function API(options) {
   ['title', 'description'].forEach(function(key) {
     assert(options[key], "Option '" + key + "' must be provided");
   });
@@ -581,7 +583,7 @@ var API = function(options) {
     assert(typeof(value) === 'number', 'Expected HTTP status code to be int');
   });
   this._entries = [];
-};
+}
 
 /** Stability levels offered by API method */
 var stability = {
@@ -1001,11 +1003,12 @@ API.prototype.setup = function(options) {
 };
 
 // Export API
-module.exports = API;
-
+// module.exports = API;
+//export default API;
 // Export middleware utilities
 API.schema        = schema;
 API.handle        = handle;
 API.stability     = stability;
 API.nonceManager  = nonceManager;
 API.remoteAuthentication = remoteAuthentication;
+
