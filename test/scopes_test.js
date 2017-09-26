@@ -1,10 +1,9 @@
+import subject from '../';
+import assert from 'assert';
+import Promise from 'promise';
+import express from 'express';
+import path from 'path';
 suite("api/route", function() {
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var subject         = require('../');
-  var express         = require('express');
-  var path            = require('path');
-
 
   // Create test api
   var api = new subject({

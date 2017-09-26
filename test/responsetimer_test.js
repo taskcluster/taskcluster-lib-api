@@ -1,12 +1,13 @@
-suite("api/responsetimer", function() {
-  require('superagent-hawk')(require('superagent'));
-  var request         = require('superagent-promise');
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var subject         = require('../');
-  var monitoring      = require('taskcluster-lib-monitor');
-  var helper          = require('./helper');
+import * as helper from  './helper';
+import subject from '../';
+import request from 'superagent-promise';
+import assert from 'assert';
+import Promise from 'promise';
+import monitoring from 'taskcluster-lib-monitor'
 
+suite("api/responsetimer", function() {
+
+  require('superagent-hawk')(require('superagent'));
   // Create test api
   var api = new subject({
     title:        "Test Api",
