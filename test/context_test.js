@@ -6,6 +6,7 @@ import Promise from 'promise';
 import request from 'superagent-promise';
 import  slugid from 'slugid';
 import path from 'path';
+
 suite("API (context)", function() {
 
   test("Provides context", async () => {

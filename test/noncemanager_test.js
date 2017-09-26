@@ -1,9 +1,10 @@
 import subject from '../';
 import assert from 'assert';
 import Promise from 'promise';
-import debug from 'debug';
+import Debug from 'debug';
 suite("nonceManager test", function() {
 
+  var debug = Debug('base:test:nonceManager');
   // Create a new nonceManager for each test
   var nonceManager = null;
   setup(function() {
