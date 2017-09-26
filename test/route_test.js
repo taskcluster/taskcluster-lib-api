@@ -4,10 +4,10 @@ import request from 'superagent-promise';
 import assert from 'assert';
 import Promise from 'promise';
 import slugid from 'slugid';
-import 'superagent-hawk';
-import 'superagent';
+
 suite("api/route", function() {
 
+  require('superagent-hawk')(require('superagent'));
   // Create test api
   var api = new subject({
     title:        "Test Api",

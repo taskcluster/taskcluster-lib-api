@@ -4,18 +4,10 @@ import request from 'superagent-promise';
 import assert from 'assert';
 import Promise from 'promise';
 import testing from 'taskcluster-lib-testing';
-//import 'superagent-hawk';
-//import 'superagent';
+
 suite("api/validate", function() {
-   require('superagent-hawk')(require('superagent'));
-   //var request         = require('superagent-promise');
-   //var assert          = require('assert');
-   //var Promise         = require('promise');
-   //var subject         = require('../');
-   //var helper          = require('./helper');
-   //var testing         = require('taskcluster-lib-testing');
 
-
+  require('superagent-hawk')(require('superagent'));
   // Create test api
   var api = new subject({
     title:        "Test Api",

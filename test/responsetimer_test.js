@@ -4,11 +4,10 @@ import request from 'superagent-promise';
 import assert from 'assert';
 import Promise from 'promise';
 import monitoring from 'taskcluster-lib-monitor'
-import 'superagent-hawk';
-import 'superagent';
 
 suite("api/responsetimer", function() {
 
+  require('superagent-hawk')(require('superagent'));
   // Create test api
   var api = new subject({
     title:        "Test Api",

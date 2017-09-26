@@ -10,10 +10,10 @@ import  slugid from 'slugid';
 import crypto from 'crypto';
 import testing from 'taskcluster-lib-testing';
 import path from 'path';
-import 'superagent-hawk';
-import 'superagent';
-suite("api/auth", function() {
 
+suite("api/auth", function() {
+  
+  require('superagent-hawk')(require('superagent'));
   // Reference for test api server
   var _apiServer = null;
 

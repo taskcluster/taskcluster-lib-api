@@ -19,8 +19,8 @@ import cryptiles from 'cryptiles';
 import taskcluster from 'taskcluster-client';
 import Ajv from 'ajv';
 import typeis from 'type-is';
-import 'superagent-hawk';
-import 'superagent';
+
+require('superagent-hawk')(require('superagent'));
   
 
 // Default baseUrl for authentication server
