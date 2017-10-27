@@ -1,24 +1,15 @@
 suite("api/publish", function() {
   var subject         = require('../');
-  var config          = require('taskcluster-lib-config');
+  var config          = require('typed-env-config');
   var aws             = require('aws-sdk');
   var assert          = require('assert');
   var Promise         = require('promise');
 
-  var cfg = config({
-    envs: [
-      'aws_accessKeyId',
-      'aws_secretAccessKey',
-      'aws_region',
-      'aws_apiVersion',
-      'referenceTestBucket'
-    ],
-    filename:               'taskcluster-base-test'
-  });
+  var cfg = config({});
 
-  if (!cfg.get('aws') || !cfg.get('referenceTestBucket')) {
+  if (!cfg.aws || !cfg.referenceTestBucket) {
     console.log("Skipping 'publish', missing config file: " +
-                "taskcluster-base-test.conf.json");
+                "user-config.yml");
     this.pending = true;
   }
 
@@ -45,14 +36,14 @@ suite("api/publish", function() {
     return api.publish({
       baseUrl:              'http://localhost:23243/v1',
       referencePrefix:      'base/test/simple-api.json',
-      referenceBucket:      cfg.get('referenceTestBucket'),
-      aws:                  cfg.get('aws')
+      referenceBucket:      cfg.referenceTestBucket,
+      aws:                  cfg.aws
     }).then(function() {
       // Get the file... we don't bother checking the contents this is good
       // enough
-      var s3 = new aws.S3(cfg.get('aws'));
+      var s3 = new aws.S3(cfg.aws);
       return s3.getObject({
-        Bucket:     cfg.get('referenceTestBucket'),
+        Bucket:     cfg.referenceTestBucket,
         Key:        'base/test/simple-api.json'
       }).promise();
     }).then(function(res) {

@@ -67,7 +67,7 @@ suite("api/responsetimer", function() {
         request.get('http://localhost:23525/slash-param/Slash').end(),
         request.get('http://localhost:23525/another-param/Another').end(),
       ]).then(function() {
-        assert.equal(Object.keys(monitor.counts).length, 6);
+        assert.equal(Object.keys(monitor.counts).length, 9);
         assert.equal(monitor.counts['tc-lib-api-test.api.testParam.success'], 2);
         assert.equal(monitor.counts['tc-lib-api-test.api.testParam.all'], 2);
         assert.equal(monitor.counts['tc-lib-api-test.api.testSlashParam.client-error'], 1);
@@ -75,13 +75,25 @@ suite("api/responsetimer", function() {
         assert.equal(monitor.counts['tc-lib-api-test.api.testAnotherParam.server-error'], 1);
         assert.equal(monitor.counts['tc-lib-api-test.api.testAnotherParam.all'], 1);
 
-        assert.equal(Object.keys(monitor.measures).length, 6);
+        // These formats look weird with the "," due to how taskcluster-lib-monitor mocks statsum
+        // The functionality we want to test here is fine.
+        assert.equal(monitor.counts['tc-lib-api-test.api.all,success'], 2);
+        assert.equal(monitor.counts['tc-lib-api-test.api.all,client-error'], 1);
+        assert.equal(monitor.counts['tc-lib-api-test.api.all,server-error'], 1);
+
+        assert.equal(Object.keys(monitor.measures).length, 9);
         assert.equal(monitor.measures['tc-lib-api-test.api.testParam.success'].length, 2);
         assert.equal(monitor.measures['tc-lib-api-test.api.testParam.all'].length, 2);
         assert.equal(monitor.measures['tc-lib-api-test.api.testSlashParam.client-error'].length, 1);
         assert.equal(monitor.measures['tc-lib-api-test.api.testSlashParam.all'].length, 1);
         assert.equal(monitor.measures['tc-lib-api-test.api.testAnotherParam.server-error'].length, 1);
         assert.equal(monitor.measures['tc-lib-api-test.api.testAnotherParam.all'].length, 1);
+
+        // These formats look weird with the "," due to how taskcluster-lib-monitor mocks statsum
+        // The functionality we want to test here is fine.
+        assert.equal(monitor.measures['tc-lib-api-test.api.all,success'].length, 2);
+        assert.equal(monitor.measures['tc-lib-api-test.api.all,client-error'].length, 1);
+        assert.equal(monitor.measures['tc-lib-api-test.api.all,server-error'].length, 1);
       });
   });
 });
