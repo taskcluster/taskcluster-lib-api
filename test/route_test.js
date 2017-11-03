@@ -1,6 +1,5 @@
 suite('api/route', function() {
-  require('superagent-hawk')(require('superagent'));
-  var request         = require('superagent-promise');
+  var request         = require('superagent');
   var assert          = require('assert');
   var Promise         = require('promise');
   var subject         = require('../');
@@ -84,7 +83,6 @@ suite('api/route', function() {
     var url = 'http://localhost:23525/single-param/Hello';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.text === 'Hello', 'Got wrong value');
@@ -96,8 +94,7 @@ suite('api/route', function() {
     return request
       .get(url)
       .query({nextPage: '352'})
-      .end()
-      .then(function(res) {
+      .catch(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.text === '352', 'Got wrong value');
       });
@@ -107,7 +104,6 @@ suite('api/route', function() {
     var url = 'http://localhost:23525/query-param/';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.text === 'empty', 'Got wrong value');
@@ -119,8 +115,8 @@ suite('api/route', function() {
     return request
       .get(url)
       .query({nextPage: 'abc'})
-      .end()
-      .then(function(res) {
+      .then(res => assert(false, 'should have failed!'))
+      .catch(function(res) {
         assert(!res.ok, 'Expected request failure!');
         assert(res.status === 400, 'Expected a 400 error');
       });
@@ -130,7 +126,6 @@ suite('api/route', function() {
     var url = 'http://localhost:23525/slash-param/Hello/World';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.text === 'Hello/World', 'Got wrong value');
@@ -142,7 +137,6 @@ suite('api/route', function() {
     var url = 'http://localhost:23525/validated-param/' + id;
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.text === id, 'Got wrong value');
@@ -153,8 +147,8 @@ suite('api/route', function() {
     var url = 'http://localhost:23525/validated-param/-';
     return request
       .get(url)
-      .end()
-      .then(function(res) {
+      .then(res => assert(false, 'should have failed!'))
+      .catch(function(res) {
         assert(!res.ok, 'Expected a failure');
         assert(res.status === 400, 'Expected a 400 error');
       });
@@ -164,7 +158,6 @@ suite('api/route', function() {
     var url = 'http://localhost:23525/validated-param-2/correct';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.text === 'correct', 'Got wrong value');
@@ -175,8 +168,8 @@ suite('api/route', function() {
     var url = 'http://localhost:23525/validated-param-2/incorrect';
     return request
       .get(url)
-      .end()
-      .then(function(res) {
+      .then(res => assert(false, 'should have failed!'))
+      .catch(function(res) {
         assert(!res.ok, 'Expected a failure');
         assert(res.status === 400, 'Expected a 400 error');
       });
@@ -186,7 +179,6 @@ suite('api/route', function() {
     var url = 'http://localhost:23525/single-param/Hello';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.header['cache-control'] === 'no-store no-cache must-revalidate', 'Got wrong header');
@@ -197,9 +189,9 @@ suite('api/route', function() {
     var url = 'http://localhost:23525/unknown';
     return request
       .get(url)
-      .end()
-      .then(function(res) {
-        assert(res.header['cache-control'] === 'no-store no-cache must-revalidate', 'Got wrong header');
+      .then(res => assert(false, 'should have failed!'))
+      .catch(function(err) {
+        assert(err.response.header['cache-control'] === 'no-store no-cache must-revalidate', 'Got wrong header');
       });
   });
 

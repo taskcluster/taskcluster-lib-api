@@ -63,8 +63,9 @@ suite('api/schemaPrefix', function() {
       .get(url)
       .send({value: 11})
       .end()
-      .then(function(res) {
-        assert(res.status === 400, 'Request wasn\'t rejected');
+      .then(res => assert(false, 'should have failed!'))
+      .catch(function(err) {
+        assert(err.status === 400, 'Request wasn\'t rejected');
       });
   });
 

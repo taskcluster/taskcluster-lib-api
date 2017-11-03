@@ -1,6 +1,5 @@
 suite('api/validate', function() {
-  require('superagent-hawk')(require('superagent'));
-  var request         = require('superagent-promise');
+  var request         = require('superagent');
   var assert          = require('assert');
   var Promise         = require('promise');
   var subject         = require('../');
@@ -97,7 +96,6 @@ suite('api/validate', function() {
     return request
       .post(url)
       .send({value: 5})
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.text === 'Hello World', 'Got wrong value');
@@ -110,9 +108,9 @@ suite('api/validate', function() {
     return request
       .post(url)
       .send({value: 11})
-      .end()
-      .then(function(res) {
-        assert(res.status === 400, 'Request wasn\'t rejected');
+      .then(res => assert(false, 'should have failed!'))
+      .catch(function(err) {
+        assert(err.status === 400, 'Request wasn\'t rejected');
       });
   });
 
@@ -121,7 +119,6 @@ suite('api/validate', function() {
     var url = 'http://localhost:23525/test-output';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request okay');
         assert(res.body.value === 4, 'Got wrong value');
@@ -133,9 +130,9 @@ suite('api/validate', function() {
     var url = 'http://localhost:23525/test-invalid-output';
     return request
       .get(url)
-      .end()
-      .then(function(res) {
-        assert(res.status === 500, 'Request wasn\'t 500');
+      .then(res => assert(false, 'should have failed!'))
+      .catch(function(err) {
+        assert(err.status === 500, 'Request wasn\'t 500');
       });
   });
 
@@ -145,7 +142,6 @@ suite('api/validate', function() {
     return request
       .post(url)
       .send({value: 100})
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.text === 'Hello World', 'Got wrong value');
@@ -157,7 +153,6 @@ suite('api/validate', function() {
     var url = 'http://localhost:23525/test-skip-output-validation';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.body.value === 12, 'Got wrong value');
@@ -169,7 +164,6 @@ suite('api/validate', function() {
     var url = 'http://localhost:23525/test-blob-output';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.body.value === 'Hello World', 'Got wrong value');
@@ -182,7 +176,6 @@ suite('api/validate', function() {
       .post(url)
       .send(JSON.stringify({value: 5}))
       .set('content-type', 'application/json')
-      .end()
       .then(function(res) {
         assert(res.status === 200, 'Request rejected');
       });
@@ -194,9 +187,9 @@ suite('api/validate', function() {
       .post(url)
       .send(JSON.stringify({value: 5}))
       .set('content-type', 'text/x-json')
-      .end()
-      .then(function(res) {
-        assert(res.status === 400, 'Request wasn\'t rejected');
+      .then(res => assert(false, 'should have failed!'))
+      .catch(function(err) {
+        assert(err.status === 400, 'Request wasn\'t rejected');
       });
   });
 });

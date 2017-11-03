@@ -1,8 +1,6 @@
-
 var express       = require('express');
 var Debug         = require('debug');
 var Promise       = require('promise');
-var uuid          = require('uuid');
 var hawk          = require('hawk');
 var aws           = require('aws-sdk');
 var assert        = require('assert');
@@ -10,11 +8,8 @@ var _             = require('lodash');
 var bodyParser    = require('body-parser');
 var path          = require('path');
 var fs            = require('fs');
-require('superagent-hawk')(require('superagent'));
-var request       = require('superagent-promise');
 var scopes        = require('taskcluster-lib-scopes');
 var crypto        = require('crypto');
-var cryptiles     = require('cryptiles');
 var taskcluster   = require('taskcluster-client');
 var Ajv           = require('ajv');
 var errors        = require('./errors');
@@ -417,7 +412,7 @@ var remoteAuthentication = function(options, entry) {
           'sha256',
           req.headers['content-type']
         );
-        if (!cryptiles.fixedTimeComparison(result.hash, hash)) {
+        if (!crypto.timingSafeEqual(result.hash, hash)) {
           // create a fake auth-failed result with the failed hash
           result = {
             status: 'auth-failed',

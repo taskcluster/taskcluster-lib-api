@@ -1,6 +1,5 @@
 suite('api/auth', function() {
-  require('superagent-hawk')(require('superagent'));
-  var request         = require('superagent-promise');
+  var request         = require('superagent-hawk')(require('superagent'));
   var assert          = require('assert');
   var Promise         = require('promise');
   var validator       = require('taskcluster-lib-validate');
@@ -138,7 +137,6 @@ suite('api/auth', function() {
         key:          'test-token',
         algorithm:    'sha256',
       })
-      .end()
       .then(function(res) {
         assert(res.ok,               'Request failed');
         assert(res.body.ok === true, 'Got result');
@@ -154,8 +152,8 @@ suite('api/auth', function() {
         key:          'test-token',
         algorithm:    'sha256',
       })
-      .end()
-      .then(function(res) {
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
         assert(res.status === 403, 'Request didn\'t fail');
       });
   });
@@ -173,7 +171,6 @@ suite('api/auth', function() {
           authorizedScopes:    ['service:magic'],
         })).toString('base64'),
       })
-      .end()
       .then(function(res) {
         if (!res.ok) {
           console.log(res.body);
@@ -195,7 +192,6 @@ suite('api/auth', function() {
           authorizedScopes:    ['service:ma*'],
         })).toString('base64'),
       })
-      .end()
       .then(function(res) {
         if (!res.ok) {
           console.log(res.body);
@@ -217,8 +213,8 @@ suite('api/auth', function() {
           authorizedScopes:    ['some-irrelevant-scope'],
         })).toString('base64'),
       })
-      .end()
-      .then(function(res) {
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
         assert(res.status === 403, 'Request didn\'t fail as expected');
       });
   });
@@ -233,7 +229,6 @@ suite('api/auth', function() {
         key:          '--',
         algorithm:    'sha256',
       })
-      .end()
       .then(function(res) {
         if (!res.ok) {
           console.log(JSON.stringify(res.body));
@@ -252,8 +247,8 @@ suite('api/auth', function() {
         key:          'test-token',
         algorithm:    'sha256',
       })
-      .end()
-      .then(function(res) {
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
         assert(res.status === 403, 'Request didn\'t fail');
       });
   });
@@ -263,7 +258,6 @@ suite('api/auth', function() {
     var url = 'http://localhost:23526/test-no-auth';
     return request
       .get(url)
-      .end()
       .then(function(res) {
         if (!res.ok) {
           console.log(JSON.stringify(res.body));
@@ -291,7 +285,6 @@ suite('api/auth', function() {
         key:          'groupie',
         algorithm:    'sha256',
       })
-      .end()
       .then(function(res) {
         if (!res.ok) {
           console.log(JSON.stringify(res.body));
@@ -322,7 +315,6 @@ suite('api/auth', function() {
           authorizedScopes:    ['got-all/*', 'got-only/this'],
         })).toString('base64'),
       })
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
       });
@@ -351,8 +343,8 @@ suite('api/auth', function() {
           authorizedScopes:    ['got-all/*', 'got-only/this'],
         })).toString('base64'),
       })
-      .end()
-      .then(function(res) {
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
         assert(res.status === 403, 'Request didn\'t fail');
       });
   });
@@ -375,8 +367,8 @@ suite('api/auth', function() {
           authorizedScopes:    ['got-only/this'],
         })).toString('base64'),
       })
-      .end()
-      .then(function(res) {
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
         assert(res.status === 403, 'Request didn\'t fail');
       });
   });
@@ -390,7 +382,6 @@ suite('api/auth', function() {
         key:          'test-token',
         algorithm:    'sha256',
       })
-      .end()
       .then(function(res) {
         assert(res.ok, 'Request failed');
         assert(res.body.scopes.length === 1, 'wrong number of scopes');
@@ -450,7 +441,6 @@ suite('api/auth', function() {
           certificate:  certificate,
         })).toString('base64'),
       })
-      .end()
       .then(function(res) {
         if (!res.ok) {
           console.log(res.body);
@@ -509,7 +499,6 @@ suite('api/auth', function() {
           certificate:  certificate,
         })).toString('base64'),
       })
-      .end()
       .then(function(res) {
         if (!res.ok) {
           console.log(res.body);

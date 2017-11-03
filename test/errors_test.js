@@ -1,6 +1,5 @@
 suite('api/errors', function() {
-  require('superagent-hawk')(require('superagent'));
-  var request         = require('superagent-promise');
+  var request         = require('superagent');
   var assert          = require('assert');
   var Promise         = require('promise');
   var subject         = require('../');
@@ -30,19 +29,18 @@ suite('api/errors', function() {
 
   test('InputError response', async function() {
     let url = 'http://localhost:23525/inputerror';
-    let res = await request
-      .get(url)
-      .end();
-    assert(res.statusCode === 400);
-    let response = JSON.parse(res.text);
-    assert(response.code === 'InputError');
-    assert(/Testing Error\n----\n/.test(response.message));
-    delete response.requestInfo['time'];
-    assert(_.isEqual(response.requestInfo, {
-      method: 'InputError',
-      params: {},
-      payload: {},
-    }));
+    return request.get(url).then(res => assert(false, 'should have failed!')).catch(res => {
+      assert(res.status === 400);
+      let response = JSON.parse(res.response.text);
+      assert(response.code === 'InputError');
+      assert(/Testing Error\n----\n/.test(response.message));
+      delete response.requestInfo['time'];
+      assert(_.isEqual(response.requestInfo, {
+        method: 'InputError',
+        params: {},
+        payload: {},
+      }));
+    });
   });
 
   api.declare({
@@ -61,35 +59,34 @@ suite('api/errors', function() {
 
   test('TooManyFoos response', async function() {
     let url = 'http://localhost:23525/toomanyfoos';
-    let res = await request
-      .get(url)
-      .end();
-    assert(res.statusCode === 472);
-    let response = JSON.parse(res.text);
-    response.message = response.message.replace(response.requestInfo.time, '<nowish>');
-    response.requestInfo.time = '<nowish>';
-    assert(_.isEqual(response, {
-      code: 'TooManyFoos',
-      message: [
-        'You can only have 3 foos.  These foos already exist:',
-        '[',
-        '  1,',
-        '  2,',
-        '  3',
-        ']',
-        '----',
-        'method:     toomanyfoos',
-        'errorCode:  TooManyFoos',
-        'statusCode: 472',
-        'time:       <nowish>',
-      ].join('\n'),
-      requestInfo: {
-        method: 'toomanyfoos',
-        params: {},
-        payload: {foos: [4, 5]},
-        time: '<nowish>',
-      },
-    }));
+    return request.get(url).then(res => assert(false, 'should have failed!')).catch(res => {
+      assert(res.status === 472);
+      let response = JSON.parse(res.response.text);
+      response.message = response.message.replace(response.requestInfo.time, '<nowish>');
+      response.requestInfo.time = '<nowish>';
+      assert(_.isEqual(response, {
+        code: 'TooManyFoos',
+        message: [
+          'You can only have 3 foos.  These foos already exist:',
+          '[',
+          '  1,',
+          '  2,',
+          '  3',
+          ']',
+          '----',
+          'method:     toomanyfoos',
+          'errorCode:  TooManyFoos',
+          'statusCode: 472',
+          'time:       <nowish>',
+        ].join('\n'),
+        requestInfo: {
+          method: 'toomanyfoos',
+          params: {},
+          payload: {foos: [4, 5]},
+          time: '<nowish>',
+        },
+      }));
+    });
   });
 
   api.declare({
@@ -104,20 +101,19 @@ suite('api/errors', function() {
 
   test('ISE response', async function() {
     let url = 'http://localhost:23525/ISE';
-    let res = await request
-      .get(url)
-      .end();
-    assert(res.statusCode === 500);
-    let response = JSON.parse(res.text);
-    assert(response.code === 'InternalServerError');
-    assert(/^Internal/.test(response.message));
-    assert(!/uhoh/.test(response.message)); // error doesn't go to user
-    delete response.requestInfo['time'];
-    assert(_.isEqual(response.requestInfo, {
-      method: 'ISE',
-      params: {},
-      payload: {},
-    }));
+    return request.get(url).then(res => assert(false, 'should have failed!')).catch(res => {
+      assert(res.status === 500);
+      let response = JSON.parse(res.response.text);
+      assert(response.code === 'InternalServerError');
+      assert(/^Internal/.test(response.message));
+      assert(!/uhoh/.test(response.message)); // error doesn't go to user
+      delete response.requestInfo['time'];
+      assert(_.isEqual(response.requestInfo, {
+        method: 'ISE',
+        params: {},
+        payload: {},
+      }));
+    });
   });
 
   api.declare({
@@ -136,20 +132,20 @@ suite('api/errors', function() {
 
   test('InputValidationError response', async function() {
     let url = 'http://localhost:23525/inputvalidationerror';
-    let res = await request
-      .post(url)
-      .send({invalid: 'yep', secret: 's3kr!t'})
-      .end();
-    assert(res.statusCode === 400);
-    let response = JSON.parse(res.text);
-    assert(!/s3kr!t/.test(res.text)); // secret does not appear in response
-    assert(response.code === 'InputValidationError');
-    assert(response.requestInfo.payload.secret == '<HIDDEN>'); // replaced payload appears in response
-    delete response.requestInfo['time'];
-    assert(_.isEqual(response.requestInfo, {
-      method: 'InputValidationError',
-      params: {},
-      payload: {invalid: 'yep', secret: '<HIDDEN>'},
-    }));
+    return request.post(url).send({invalid: 'yep', secret: 's3kr!t'})
+      .then(res => assert(false, 'should have failed!'))
+      .catch(res => {
+        assert(res.status === 400);
+        let response = JSON.parse(res.response.text);
+        assert(!/s3kr!t/.test(res.text)); // secret does not appear in response
+        assert(response.code === 'InputValidationError');
+        assert(response.requestInfo.payload.secret == '<HIDDEN>'); // replaced payload appears in response
+        delete response.requestInfo['time'];
+        assert(_.isEqual(response.requestInfo, {
+          method: 'InputValidationError',
+          params: {},
+          payload: {invalid: 'yep', secret: '<HIDDEN>'},
+        }));
+      });
   });
 });
