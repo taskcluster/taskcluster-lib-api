@@ -1,4 +1,5 @@
 var express       = require('express');
+
 var Debug         = require('debug');
 var Promise       = require('promise');
 var hawk          = require('hawk');
@@ -143,6 +144,10 @@ var schema = function(validate, options) {
     // Add a reply method sending JSON replies, this will always reply with HTTP
     // code 200... errors should be sent with res.json(code, json)
     res.reply = function(json) {
+      if (req.missing && req.missing.length) {
+        let err = new Error('Deferred auth was never checked!');
+        return res.reportInternalError(err, {apiMethodName: options.name, missing: req.missing});
+      }
       // If we're supposed to validate outgoing messages and output schema is
       // defined, then we have to validate against it...
       if (options.output !== undefined && !options.skipOutputValidation &&
@@ -286,8 +291,8 @@ var createRemoteSignatureValidator = function(options) {
 };
 
 /**
- * Authenticate client using remote API end-point and validate that he satisfies
- * one of the sets of scopes required. Skips validation if `options.scopes` is
+ * Authenticate client using remote API end-point and validate that it satisfies
+ * a specified scope expression. Skips validation if `options.scopes` is
  * `undefined`.
  *
  * options:
@@ -300,11 +305,10 @@ var createRemoteSignatureValidator = function(options) {
  *
  * entry:
  * {
- *   scopes:  [
+ *   scopes:  {AnyOf: [
  *     'service:method:action:<resource>'
- *     ['admin', 'superuser'],
- *   ]
- *   deferAuth:   false, // defaults to false
+ *     {AllOf: ['admin', 'superuser']},
+ *   ]},
  *   name:        '...', // API end-point name for internal errors
  * }
  *
@@ -315,27 +319,53 @@ var createRemoteSignatureValidator = function(options) {
  *
  * The request grows the following properties:
  *
- *  * `req.satisfies(scopesets, noReply)`
+ *  * `req.authorize(params, options)`
  *  * `await req.scopes()`
  *  * `await req.clientId()`
  *
- * The `req.satisfies(scopesets, noReply)` method returns `true` if the
- * client satisfies one of the scopesets. If the client does not satisfy one
- * of the scopesets, it returns `false` and sends an error message unless
- * `noReply = true`.
+ * The `req.authorize(params, options)` method will substitute params
+ * into the scope expression in `options.scopes`. This can happen in one of two
+ * ways:
  *
- * If `deferAuth` is set to `true`, then authentication will be postponed to
- * the first invocation of `req.satisfies`. Further note, that if
- * `req.satisfies` is called with an object as first argument (instead of a
- * list), then it'll assume this object is a mapping from scope parameters to
- * values. e.g. `req.satisfies({resource: "my-resource"})` will check that
- * the client satisfies `'service:method:action:my-resource'`.
- * (This is useful when working with dynamic scope strings).
+ * First is that any strings with `<foo>` in them will have `<foo>` replaced
+ * by whatever parameter you pass in to authorize that has the key `foo`. It
+ * must be a string to be substituted in this manner.
  *
- * Note that `deferAuth` will not perform authorization unless, `req.satisfies({})`
- * is called either without arguments or with an object as first argument.
+ * Second is a case where an object of the form
+ * `{for: 'foo', in: 'bar', each: 'baz:<foo>'}`. In this case, the param
+ * `bar` must be an array and each element of `bar` will be substituted
+ * into the string in `each` in the same way as described above for regular
+ * strings. The results will then be concatenated into the array that this
+ * object is a part of. An example:
  *
- * If `deferAuth` is false, then req.params will be used as the scope parameters.
+ * options.scopes = {AnyOf: ['abc', {for: 'foo', in: 'bar', each: '<foo>:baz'}]}
+ *
+ * params = {bar: ['def', 'qed']}
+ *
+ * results in:
+ *
+ * {AnyOf: [
+ *   'abc',
+ *   'def:baz',
+ *   'qed:baz',
+ * ]}
+ *
+ * Params specified in `<...>` or the `in` part of the objects are allowed to
+ * use dotted syntax to descend into params. Example:
+ *
+ * options.scopes = {AllOf: ['whatever:<foo.bar>]}
+ *
+ * params = {foo: {bar: 'abc'}}
+ *
+ * results in:
+ *
+ * {AllOf: ['whatever:abc']}
+ *
+ * The `req.authorize(params, options)` method returns `true` if the
+ * client satisfies the scope expression in `options.scopes` after the
+ * parameters denoted by `<...>` and `{for: ..., each: ..., in: ...}` are
+ * substituted in. If the client does not satisfy the scope expression, it
+ * returns `false` and sends an error message unless `options.noReply = true`.
  *
  * The `req.scopes()` method returns a Promise for the set of scopes the caller
  * has. Please, note that `req.scopes()` returns `[]` if there was an
@@ -449,12 +479,14 @@ var remoteAuthentication = function(options, entry) {
       req.expires = async () => expires;
 
       /**
-       * Create method to check if request satisfies a scope-set from required
-       * set of scope-sets.
+       * Create method to check if request satisfies the scope expression. Given
+       * extra parameters.
        * Return true, if successful and if unsuccessful it replies with
-       * error to `res`, unless `noReply` is `true`.
+       * error to `res`, unless `options.noReply` is `true`.
        */
-      req.satisfies = function(scopesets, noReply) {
+      req.authorize = function(params, options) {
+        var {noReply, allowLater} = options || {};
+        // TODO: do this authentication check with auth in here!
         // If authentication failed
         if (result.status === 'auth-failed') {
           if (!noReply) {
@@ -464,51 +496,84 @@ var remoteAuthentication = function(options, entry) {
           return false;
         }
 
-        // If we're not given an array, we assume it's a set of parameters that
-        // must be used to parameterize the original scopesets
-        if (!(scopesets instanceof Array)) {
-          var params = scopesets;
-          scopesets = _.cloneDeepWith(entry.scopes, function(scope) {
+        req.missing = [];
+
+        var _splatParams = (scope) => scope.replace(/<([^>]+)>/g, function(match, param) {
+          var value = _.at(params, param)[0];
+          if (value !== undefined) {
+            return value;
+          }
+          req.missing.push(match); // If any are left undefined, we can't be done yet
+          return match;
+        });
+
+        var _expandExpressionTemplate = (template) => {
+          var key = Object.keys(template)[0];
+          var subexpressions = [];
+          template[key].forEach(scope => {
             if (typeof scope === 'string') {
-              return scope.replace(/<([^>]+)>/g, function(match, param) {
-                var value = params[param];
-                return value === undefined ? match : value;
+              subexpressions.push(_splatParams(scope));
+            } else if (_.isObject(scope) && scope.for && scope.in && scope.each) {
+              let subs = _.at(params, scope.in)[0];
+              if (!subs) {
+                req.missing.push(scope.in);
+                subexpressions.push(scope);
+                return;
+              }
+              subs.forEach(param => {
+                subexpressions.push(_splatParams(scope.each.replace(`<${scope.for}>`, param)));
               });
+            } else {
+              subexpressions.push(_expandExpressionTemplate(scope));
             }
           });
+          return {[key]: subexpressions};
+        };
+
+        var scopeExpression = _expandExpressionTemplate(entry.scopes);
+
+        if (req.missing.length) {
+          if (allowLater) {
+            debug(`Not all parameters supplied yet. Deferring authorization due to missing parameters: ${req.missing}`);
+            return true;
+          }
+          return res.reportError('InternalServerError', [
+            'Not all parameters were supplied to a scope check.',
+            'The call to req.authorize was not allowed to be partially',
+            'applied. Missing parameters: {{missing}}',
+          ].join('\n'), {missing: req.missing});
         }
 
         // Test that we have scope intersection, and hence, is authorized
-        var retval = scopes.scopeMatch(result.scopes, scopesets);
+        var retval = scopes.satisfiesExpression(result.scopes, scopeExpression);
         if (retval) {
           // TODO: log this in a structured format when structured logging is
           // available https://bugzilla.mozilla.org/show_bug.cgi?id=1307271
           authLog(`Authorized ${clientId} for ${req.method} access to ${req.originalUrl}`);
         }
         if (!retval && !noReply) {
+          let missing = scopes.removeGivenScopes(result.scopes, scopeExpression);
           res.reportError('InsufficientScopes', [
-            'You do not have sufficient scopes. This request requires you',
-            'to have one of the following sets of scopes:',
-            '{{scopesets}}',
+            'You do not have sufficient scopes. You are missing the following scopes:',
+            '',
+            '{{missing}}',
             '',
             'You only have the scopes:',
+            '',
             '{{scopes}}',
             '',
-            'In other words you are missing scopes from one of the options:',
-          ].concat(scopesets.map((set, index) => {
-            let missing = set.filter(scope => {
-              return !scopes.scopeMatch(result.scopes, [[scope]]);
-            });
-            return ' * Option ' + index + ':\n    - "' +
-                   missing.join('", and\n    - "') + '"';
-          })).join('\n'),  {scopesets, scopes: result.scopes});
+            'This request requires you to satisfy this scope expression:',
+            '',
+            '{{scopeExpression}}',
+          ]
+            .join('\n'),  {missing, scopeExpression, scopes: result.scopes});
         }
         return retval;
       };
 
       // If authentication is deferred or satisfied, then we proceed,
       // substituting the request paramters by default
-      if (!entry.scopes || entry.deferAuth || req.satisfies(req.params)) {
+      if (!entry.scopes || req.authorize(req.params, {allowLater: true})) {
         next();
       }
     }).catch(function(err) {
@@ -529,6 +594,14 @@ var handle = function(handler, context, name) {
   return function(req, res) {
     Promise.resolve(null).then(function() {
       return handler.call(context, req, res);
+    }).then(function() {
+      if (req.missing && req.missing.length) {
+        // Note: This will not fail the request since a response has already
+        // been sent at this point. It will report to sentry however!
+        // This is only to catch the case where people do not use res.reply()
+        let err = new Error('Deferred auth was never checked and res.reply() not used!');
+        return res.reportInternalError(err, {apiMethodName: name, missing: req.missing});
+      }
     }).catch(function(err) {
       return res.reportInternalError(err, {apiMethodName: name});
     });
@@ -683,8 +756,15 @@ API.prototype.declare = function(options, handler) {
       throw new Error('query.' + key + ' must be a RegExp or a function!');
     }
   });
+  assert(!options.deferAuth,
+    'deferAuth is deprecated! https://github.com/taskcluster/taskcluster-lib-api#request-handlers');
   if ('scopes' in options) {
-    scopes.validateScopeSets(options.scopes);
+    assert(scopes.validExpression(_.cloneDeepWith(options.scopes, scope => {
+      if (_.isObject(scope) && scope.for && scope.in && scope.each) {
+        // This makes these template constructs valid parts of an expression
+        return 'looping-template-construct';
+      }
+    })));
   }
   options.handler = handler;
   if (options.input) {
