@@ -396,7 +396,7 @@ var remoteAuthentication = function(options, entry) {
   // Returns promise for object on the form:
   //   {status, message, scopes, scheme, hash}
   // scopes, scheme, hash are only present if status isn't auth-failed
-  var authenticate = function(req) {
+  var authenticate = async function(req) {
     // Check that we're not using two authentication schemes, we could
     // technically allow two. There are cases where we redirect and it would be
     // smart to let bewit overwrite header authentication.
@@ -431,59 +431,66 @@ var remoteAuthentication = function(options, entry) {
     }
 
     // Send input to signatureValidator (auth server or local validator)
-    return Promise.resolve(options.signatureValidator({
+    let result = await Promise.resolve(options.signatureValidator({
       method:           req.method.toLowerCase(),
       resource:         req.originalUrl,
       host:             host.name,
       port:             parseInt(port, 10),
       authorization:    req.headers.authorization,
     }, options));
+
+    // Validate request hash if one is provided
+    if (typeof result.hash === 'string' && result.scheme === 'hawk') {
+      var hash = hawk.crypto.calculatePayloadHash(
+        new Buffer(req.text, 'utf-8'),
+        'sha256',
+        req.headers['content-type']
+      );
+      if (!crypto.timingSafeEqual(Buffer.from(result.hash), Buffer.from(hash))) {
+        // create a fake auth-failed result with the failed hash
+        result = {
+          status: 'auth-failed',
+          message:
+            'Invalid payload hash: {{hash}}\n' +
+            'Computed payload hash: {{computedHash}}\n' +
+            'This happens when your request carries a signed hash of the ' +
+            'payload and the hash doesn\'t match the hash we\'ve computed ' +
+            'on the server-side.',
+          computedHash: hash,
+        };
+      }
+    }
+
+    return result;
   };
 
-  return function(req, res, next) {
-    return authenticate(req).then(function(result) {
-      // Validate request hash if one is provided
-      if (typeof result.hash === 'string' && result.scheme === 'hawk') {
-        var hash = hawk.crypto.calculatePayloadHash(
-          new Buffer(req.text, 'utf-8'),
-          'sha256',
-          req.headers['content-type']
-        );
-        if (!crypto.timingSafeEqual(Buffer.from(result.hash), Buffer.from(hash))) {
-          // create a fake auth-failed result with the failed hash
-          result = {
-            status: 'auth-failed',
-            message:
-              'Invalid payload hash: {{hash}}\n' +
-              'Computed payload hash: {{computedHash}}\n' +
-              'This happens when your request carries a signed hash of the ' +
-              'payload and the hash doesn\'t match the hash we\'ve computed ' +
-              'on the server-side.',
-            computedHash: hash,
-          };
-        }
-      }
-
+  return async function(req, res, next) {
+    let result;
+    try {
       /** Create method that returns list of scopes the caller has */
-      req.scopes = function() {
+      req.scopes = async function() {
+        result = await (result || authenticate(req));
         if (result.status !== 'auth-success') {
           return Promise.resolve([]);
         }
         return Promise.resolve(result.scopes || []);
       };
 
-      let clientId, expires;
-      // generate valid clientIds for exceptional cases
-      if (result.status === 'auth-success') {
-        clientId = result.clientId || 'unknown-clientId';
-        expires = new Date(result.expires);
-      } else {
-        clientId = 'auth-failed:' + result.status;
-        expires = undefined;
-      }
-      // these are functions so we can later make an async request on demand
-      req.clientId = async () => clientId;
-      req.expires = async () => expires;
+      req.clientId = async () => {
+        result = await (result || authenticate(req));
+        if (result.status === 'auth-success') {
+          return result.clientId || 'unknown-clientId';
+        }
+        return 'auth-failed:' + result.status;
+      };
+
+      req.expires = async () => {
+        result = await (result || authenticate(req));
+        if (result.status === 'auth-success') {
+          return new Date(result.expires);
+        }
+        return undefined;
+      };
 
       /**
        * Create method to check if request satisfies the scope expression. Given
@@ -491,9 +498,10 @@ var remoteAuthentication = function(options, entry) {
        * Return true, if successful and if unsuccessful it replies with
        * error to `res`, unless `options.noReply` is `true`.
        */
-      req.authorize = function(params, options) {
+      req.authorize = async function(params, options) {
         var {noReply, allowLater} = options || {};
-        // TODO: do this authentication check with auth in here!
+        result = await (result || authenticate(req));
+
         // If authentication failed
         if (result.status === 'auth-failed') {
           if (!noReply) {
@@ -556,7 +564,7 @@ var remoteAuthentication = function(options, entry) {
             debug(`Not all parameters supplied yet. Deferring authorization due to missing parameters: ${req.missing}`);
             return true;
           }
-          return res.reportError('InternalServerError', [
+          return res.reportInternalError('InternalServerError', [
             'Not all parameters were supplied to a scope check.',
             'The call to req.authorize was not allowed to be partially',
             'applied. Missing parameters: {{missing}}',
@@ -569,7 +577,7 @@ var remoteAuthentication = function(options, entry) {
         if (retval) {
           // TODO: log this in a structured format when structured logging is
           // available https://bugzilla.mozilla.org/show_bug.cgi?id=1307271
-          authLog(`Authorized ${clientId} for ${req.method} access to ${req.originalUrl}`);
+          authLog(`Authorized ${await req.clientId()} for ${req.method} access to ${req.originalUrl}`);
         }
         if (!retval && !noReply) {
           let missing = scopes.removeGivenScopes(result.scopes, scopeExpression);
@@ -595,12 +603,12 @@ var remoteAuthentication = function(options, entry) {
 
       // If authentication is deferred or satisfied, then we proceed,
       // substituting the request paramters by default
-      if (!entry.scopes || req.authorize(req.params, {allowLater: true})) {
+      if (!entry.scopes || await req.authorize(req.params, {allowLater: true})) {
         next();
       }
-    }).catch(function(err) {
+    } catch (err) {
       return res.reportInternalError(err, {apiMethodName: entry.name});
-    });
+    };
   };
 };
 
@@ -786,6 +794,7 @@ API.prototype.declare = function(options, handler) {
       if (_.isObject(scope) && scope.for && scope.in && scope.each) {
         return 'looping-template-construct';
       } else if (_.isObject(scope) && scope.if && scope.then) {
+        assert(scopes.validExpression(scope.then));
         return 'conditional-template-construct';
       }
     })));

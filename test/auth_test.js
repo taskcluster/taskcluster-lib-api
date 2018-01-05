@@ -57,8 +57,8 @@ suite('api/auth', function() {
     title:        'Test End-Point',
     scopes:       {AllOf: ['service:<param>']},
     description:  'Place we can call to test something',
-  }, function(req, res) {
-    if (req.authorize({
+  }, async function(req, res) {
+    if (await req.authorize({
       param:      'myfolder/resource',
     })) {
       res.status(200).json('OK');
@@ -85,8 +85,8 @@ suite('api/auth', function() {
     title:        'Test End-Point',
     scopes:       {AllOf: [{for: 'scope', in: 'request.scopes', each: '<scope>'}]},
     description:  'Place we can call to test something',
-  }, function(req, res) {
-    if (req.authorize({request: req.body})) {
+  }, async function(req, res) {
+    if (await req.authorize({request: req.body})) {
       return res.status(200).json('OK');
     }
   });
@@ -103,8 +103,8 @@ suite('api/auth', function() {
       {for: 'scope', in: 'task.scopes', each: '<scope>'},
     ]},
     description:  'Place we can call to test something',
-  }, function(req, res) {
-    if (req.authorize({
+  }, async function(req, res) {
+    if (await req.authorize({
       provisionerId:    req.params.provisionerId,
       workerType:       req.params.workerType,
       task:             req.body,
@@ -124,8 +124,8 @@ suite('api/auth', function() {
       {if: 'public', then: {AllOf: []}},
     ]},
     description:  'Place we can call to test something',
-  }, function(req, res) {
-    if (req.authorize({
+  }, async function(req, res) {
+    if (await req.authorize({
       public: req.body.public,
     })) {
       return res.status(200).json('OK');
