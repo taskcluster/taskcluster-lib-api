@@ -113,6 +113,40 @@ suite('api/auth', function() {
     }
   });
 
+  // Declare a method we can test with expression utilizing if/then
+  api.declare({
+    method:       'get',
+    route:        '/test-expression-if-then',
+    name:         'testExprAuth',
+    title:        'Test End-Point',
+    scopes:       {AnyOf: [
+      'some:scope:nobody:has',
+      {if: 'public', then: {AllOf: []}},
+    ]},
+    description:  'Place we can call to test something',
+  }, function(req, res) {
+    if (req.authorize({
+      public: req.body.public,
+    })) {
+      return res.status(200).json('OK');
+    }
+  });
+
+  // Declare a method we can test with expression utilizing if/then but then forget to auth
+  api.declare({
+    method:       'get',
+    route:        '/test-expression-if-then-forget',
+    name:         'testExprAuth',
+    title:        'Test End-Point',
+    scopes:       {AnyOf: [
+      'some:scope:nobody:has',
+      {if: 'public', then: {AllOf: []}},
+    ]},
+    description:  'Place we can call to test something',
+  }, function(req, res) {
+    return res.reply({});
+  });
+
   // Declare a method we can test dynamic authorization but never call authorize
   // This will only work with our res.reply()
   api.declare({
@@ -426,6 +460,96 @@ suite('api/auth', function() {
           console.log(JSON.stringify(res.body));
           assert(false, 'Request failed');
         }
+      });
+  });
+
+  test('scope expression if/then (success)', function() {
+    var url = 'http://localhost:23526/test-expression-if-then';
+    return request
+      .get(url)
+      .send({
+        public: true,
+      })
+      .hawk({
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256',
+      }, {
+        ext: new Buffer(JSON.stringify({
+          authorizedScopes:    ['nothing:useful'],
+        })).toString('base64'),
+      })
+      .then(function(res) {
+        if (!res.ok) {
+          console.log(JSON.stringify(res.body));
+          assert(false, 'Request failed');
+        }
+      });
+  });
+
+  test('scope expression if/then (success with no client)', function() {
+    var url = 'http://localhost:23526/test-expression-if-then';
+    return request
+      .get(url)
+      .send({
+        public: true,
+      })
+      .then(function(res) {
+        if (!res.ok) {
+          console.log(JSON.stringify(res.body));
+          assert(false, 'Request failed');
+        }
+      });
+  });
+
+  test('scope expression if/then (failure)', function() {
+    var url = 'http://localhost:23526/test-expression-if-then';
+    return request
+      .get(url)
+      .send({
+        public: false,
+      })
+      .hawk({
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256',
+      }, {
+        ext: new Buffer(JSON.stringify({
+          authorizedScopes:    ['nothing:useful'],
+        })).toString('base64'),
+      })
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
+        assert(res.status === 403, 'Request didn\'t fail');
+      });
+  });
+
+  test('scope expression if/then (failure with no client)', function() {
+    var url = 'http://localhost:23526/test-expression-if-then';
+    return request
+      .get(url)
+      .send({
+        public: false,
+      })
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
+        assert(res.status === 403, 'Request didn\'t fail');
+      });
+  });
+
+  test('scope expression if/then (forgot to auth)', function() {
+    var url = 'http://localhost:23526/test-expression-if-then-forget';
+    return request
+      .get(url)
+      .send({})
+      .hawk({
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256',
+      })
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
+        assert(res.status === 500, 'Request didn\'t fail');
       });
   });
 

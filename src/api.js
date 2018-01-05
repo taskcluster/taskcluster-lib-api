@@ -144,9 +144,9 @@ var schema = function(validate, options) {
     // Add a reply method sending JSON replies, this will always reply with HTTP
     // code 200... errors should be sent with res.json(code, json)
     res.reply = function(json) {
-      if (req.missing && req.missing.length) {
+      if (!req.hasAuthed) {
         let err = new Error('Deferred auth was never checked!');
-        return res.reportInternalError(err, {apiMethodName: options.name, missing: req.missing});
+        return res.reportInternalError(err, {apiMethodName: options.name});
       }
       // If we're supposed to validate outgoing messages and output schema is
       // defined, then we have to validate against it...
@@ -324,7 +324,7 @@ var createRemoteSignatureValidator = function(options) {
  *  * `await req.clientId()`
  *
  * The `req.authorize(params, options)` method will substitute params
- * into the scope expression in `options.scopes`. This can happen in one of two
+ * into the scope expression in `options.scopes`. This can happen in one of three
  * ways:
  *
  * First is that any strings with `<foo>` in them will have `<foo>` replaced
@@ -349,6 +349,13 @@ var createRemoteSignatureValidator = function(options) {
  *   'def:baz',
  *   'qed:baz',
  * ]}
+ *
+ * Third is an object of the form `{if: 'foo', then: ...}`.
+ * In this case if the parameter `foo` exists and is truthy, then the
+ * object will be substituted with the scope expression specified
+ * in `then`. This is useful for allowing methods to be called
+ * when certain cases happen such as an artifact beginning with the
+ * string "public/".
  *
  * Params specified in `<...>` or the `in` part of the objects are allowed to
  * use dotted syntax to descend into params. Example:
@@ -496,14 +503,16 @@ var remoteAuthentication = function(options, entry) {
           return false;
         }
 
-        req.missing = [];
+        req.hasAuthed = false;
+        let missing = [];
+        let hasConditional = false;
 
         var _splatParams = (scope) => scope.replace(/<([^>]+)>/g, function(match, param) {
           var value = _.at(params, param)[0];
           if (value !== undefined) {
             return value;
           }
-          req.missing.push(match); // If any are left undefined, we can't be done yet
+          missing.push(match); // If any are left undefined, we can't be done yet
           return match;
         });
 
@@ -516,13 +525,18 @@ var remoteAuthentication = function(options, entry) {
             } else if (_.isObject(scope) && scope.for && scope.in && scope.each) {
               let subs = _.at(params, scope.in)[0];
               if (!subs) {
-                req.missing.push(scope.in);
+                missing.push(scope.in);
                 subexpressions.push(scope);
                 return;
               }
               subs.forEach(param => {
                 subexpressions.push(_splatParams(scope.each.replace(`<${scope.for}>`, param)));
               });
+            } else if (_.isObject(scope) && scope.if && scope.then) {
+              hasConditional = true;
+              if (_.at(params, scope.if)[0]) {
+                subexpressions.push(_expandExpressionTemplate(scope.then));
+              }
             } else {
               subexpressions.push(_expandExpressionTemplate(scope));
             }
@@ -532,7 +546,12 @@ var remoteAuthentication = function(options, entry) {
 
         var scopeExpression = _expandExpressionTemplate(entry.scopes);
 
-        if (req.missing.length) {
+        if (hasConditional && allowLater) {
+          debug('Conditional provided in scopes. Deferring authorization.');
+          return true;
+        }
+
+        if (missing.length) {
           if (allowLater) {
             debug(`Not all parameters supplied yet. Deferring authorization due to missing parameters: ${req.missing}`);
             return true;
@@ -546,6 +565,7 @@ var remoteAuthentication = function(options, entry) {
 
         // Test that we have scope intersection, and hence, is authorized
         var retval = scopes.satisfiesExpression(result.scopes, scopeExpression);
+        req.hasAuthed = true;
         if (retval) {
           // TODO: log this in a structured format when structured logging is
           // available https://bugzilla.mozilla.org/show_bug.cgi?id=1307271
@@ -571,6 +591,8 @@ var remoteAuthentication = function(options, entry) {
         return retval;
       };
 
+      req.hasAuthed = true; // No need to check auth unless there are scopes
+
       // If authentication is deferred or satisfied, then we proceed,
       // substituting the request paramters by default
       if (!entry.scopes || req.authorize(req.params, {allowLater: true})) {
@@ -595,12 +617,12 @@ var handle = function(handler, context, name) {
     Promise.resolve(null).then(function() {
       return handler.call(context, req, res);
     }).then(function() {
-      if (req.missing && req.missing.length) {
+      if (!req.hasAuthed) {
         // Note: This will not fail the request since a response has already
         // been sent at this point. It will report to sentry however!
         // This is only to catch the case where people do not use res.reply()
         let err = new Error('Deferred auth was never checked and res.reply() not used!');
-        return res.reportInternalError(err, {apiMethodName: name, missing: req.missing});
+        return res.reportInternalError(err, {apiMethodName: name});
       }
     }).catch(function(err) {
       return res.reportInternalError(err, {apiMethodName: name});
@@ -760,9 +782,11 @@ API.prototype.declare = function(options, handler) {
     'deferAuth is deprecated! https://github.com/taskcluster/taskcluster-lib-api#request-handlers');
   if ('scopes' in options) {
     assert(scopes.validExpression(_.cloneDeepWith(options.scopes, scope => {
+      // This makes these template constructs valid parts of an expression
       if (_.isObject(scope) && scope.for && scope.in && scope.each) {
-        // This makes these template constructs valid parts of an expression
         return 'looping-template-construct';
+      } else if (_.isObject(scope) && scope.if && scope.then) {
+        return 'conditional-template-construct';
       }
     })));
   }

@@ -168,6 +168,18 @@ this will evaluate to:
   scopes: {AllOf: ['queue:route:foo', 'queue:route:bar']}
 ```
 
+You may also use if/then constructs in scope expressions. In this case, the `if`
+field should be a parameter and the `then` must be a scope expression that will
+be subsituted in for the if/then block if the `if` parameter exists and is truthy.
+Given the follwoing example:
+
+```js
+  scopes: {AnyOf: ['foo:bar', {if: 'public', then: {AnyOf: []}}]}
+```
+
+We can call `authorize({public: true})` and the method call will be permitted
+even if the client does not have the scope `foo:bar`.
+
 In addition, parameters can be nested objects and accessed with dotted notation.
 Given parameters `task` that is `{extra: {treeherder: {symbol: 'F'}}}`, we can do
 the following:
