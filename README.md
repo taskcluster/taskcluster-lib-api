@@ -137,23 +137,27 @@ and `workerType`, *or* the caller's scopes satisfy all of
 `queue:define-task:..`, `queue:task-group-id:..`, and `queue:schedule-task:..`.
 
 ```js
-  scopes: {AnyOf: [
-    {AllOf: [
-      'queue:create-task:<provisionerId>/<workerType>',
+  scopes:
+    {AnyOf: [
+      {AllOf: [
+        'queue:create-task:<provisionerId>/<workerType>',
+      ]},
+      {AllOf: [
+        'queue:define-task:<provisionerId>/<workerType>',
+        'queue:task-group-id:<schedulerId>/<taskGroupId>',
+        'queue:schedule-task:<schedulerId>/<taskGroupId>/<taskId>',
+      ]},
     ]},
-    {AllOf: [
-      'queue:define-task:<provisionerId>/<workerType>',
-      'queue:task-group-id:<schedulerId>/<taskGroupId>',
-      'queue:schedule-task:<schedulerId>/<taskGroupId>/<taskId>',
-    ]},
-  ]},
 ```
 
 If scope validation fails, the user is presented with an extensive error
 message indicating the available and required scopes.
 
 Arrays of required scopes can also be templated in the scopes section. When
-this form is used, the parameter must be an array.
+this form is used, the parameter in the `in` section must be an array. The
+value of `each` *must* be a simple template string and cannot be a scope
+expression or another template object. This will not allow recursive
+definitions.
 
 ```js
   scopes: {AllOf: [
