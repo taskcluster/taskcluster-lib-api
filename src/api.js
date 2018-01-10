@@ -516,7 +516,6 @@ var remoteAuthentication = function(options, entry) {
           return false;
         }
 
-        req.hasAuthed = false;
         let missing = [];
 
         var scopeExpression = expressions.expandExpressionTemplate(entry.scopes, params, missing);
@@ -561,11 +560,14 @@ var remoteAuthentication = function(options, entry) {
         return retval;
       };
 
-      req.hasAuthed = true; // No need to check auth unless there are scopes
+      req.hasAuthed = false;
 
       // If authentication is deferred or satisfied, then we proceed,
-      // substituting the request paramters by default
-      if (!entry.scopes || await req.authorize(req.params, {allowLater: true})) {
+      // substituting the request parameters by default
+      if (!entry.scopes) {
+        req.hasAuthed = true;  // No need to check auth if there are no scopes
+        next();
+      } else if (await req.authorize(req.params, {allowLater: true})) {
         next();
       }
     } catch (err) {
@@ -591,7 +593,7 @@ var handle = function(handler, context, name) {
         // Note: This will not fail the request since a response has already
         // been sent at this point. It will report to sentry however!
         // This is only to catch the case where people do not use res.reply()
-        let err = new Error('Deferred auth was never checked and res.reply() not used!');
+        let err = new Error('req.authorize was never called, or some parameters were missing from the request');
         return res.reportInternalError(err, {apiMethodName: name});
       }
     }).catch(function(err) {
