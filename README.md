@@ -179,10 +179,10 @@ This will not do any truthiness conversions, you must do that yourself if desire
 Given the following example:
 
 ```js
-  scopes: {AnyOf: ['foo:bar', {if: 'public', then: {AnyOf: []}}]}
+  scopes: {AllOf: [{if: 'private', then: 'foo:bar'}]}
 ```
 
-We can call `authorize({public: true})` and the method call will be permitted
+We can call `authorize({private: false})` and the method call will be permitted
 even if the client does not have the scope `foo:bar`.
 
 In addition, parameters can be nested objects and accessed with dotted notation.
