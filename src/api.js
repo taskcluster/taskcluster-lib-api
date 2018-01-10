@@ -1,5 +1,4 @@
 var express       = require('express');
-
 var Debug         = require('debug');
 var Promise       = require('promise');
 var hawk          = require('hawk');
@@ -490,6 +489,10 @@ var remoteAuthentication = function(options, entry) {
           return new Date(result.expires);
         }
         return undefined;
+      };
+
+      req.satisfies = function() {
+        throw new Error('req.satisfies is deprecated! use req.authorize instead');
       };
 
       /**

@@ -25,6 +25,18 @@ suite('api/auth', function() {
 
   api.declare({
     method:       'get',
+    route:        '/test-deprecated-satisfies',
+    name:         'testDepSat',
+    title:        'Test End-Point',
+    description:  'Place we can call to test something',
+  }, function(req, res) {
+    if (req.satisfies([])) {
+      res.status(200).json({ok: true});
+    }
+  });
+
+  api.declare({
+    method:       'get',
     route:        '/test-static-scope',
     name:         'testStaticScopes',
     title:        'Test End-Point',
@@ -195,6 +207,21 @@ suite('api/auth', function() {
   teardown(async () => {
     testing.fakeauth.stop();
     await _apiServer.terminate();
+  });
+
+  test('function that still uses satisfies fails', function() {
+    var url = 'http://localhost:23526/test-deprecated-satisfies';
+    return request
+      .get(url)
+      .hawk({
+        id:           'nobody',
+        key:          'test-token',
+        algorithm:    'sha256',
+      })
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
+        assert(res.status === 500, 'Request didn\'t fail');
+      });
   });
 
   test('request with static scope', function() {
