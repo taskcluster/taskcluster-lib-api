@@ -174,8 +174,9 @@ this will evaluate to:
 
 You may also use if/then constructs in scope expressions. In this case, the `if`
 field should be a parameter and the `then` must be a scope expression that will
-be subsituted in for the if/then block if the `if` parameter exists and is truthy.
-Given the follwoing example:
+be subsituted in for the if/then block if the `if` parameter is a boolean and is true.
+This will not do any truthiness conversions, you must do that yourself if desired.
+Given the following example:
 
 ```js
   scopes: {AnyOf: ['foo:bar', {if: 'public', then: {AnyOf: []}}]}

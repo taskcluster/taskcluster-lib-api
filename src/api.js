@@ -13,6 +13,7 @@ var crypto        = require('crypto');
 var taskcluster   = require('taskcluster-client');
 var Ajv           = require('ajv');
 var errors        = require('./errors');
+var expressions   = require('./expressions');
 var typeis        = require('type-is');
 
 // Default baseUrl for authentication server
@@ -350,9 +351,10 @@ var createRemoteSignatureValidator = function(options) {
  * ]}
  *
  * Third is an object of the form `{if: 'foo', then: ...}`.
- * In this case if the parameter `foo` exists and is truthy, then the
+ * In this case if the parameter `foo` is a boolean and true, then the
  * object will be substituted with the scope expression specified
- * in `then`. This is useful for allowing methods to be called
+ * in `then`. No truthiness conversions will be done for you.
+ * This is useful for allowing methods to be called
  * when certain cases happen such as an artifact beginning with the
  * string "public/".
  *
@@ -516,51 +518,8 @@ var remoteAuthentication = function(options, entry) {
 
         req.hasAuthed = false;
         let missing = [];
-        let hasConditional = false;
 
-        var _splatParams = (scope) => scope.replace(/<([^>]+)>/g, function(match, param) {
-          var value = _.at(params, param)[0];
-          if (value !== undefined) {
-            return value;
-          }
-          missing.push(match); // If any are left undefined, we can't be done yet
-          return match;
-        });
-
-        var _expandExpressionTemplate = (template) => {
-          var key = Object.keys(template)[0];
-          var subexpressions = [];
-          template[key].forEach(scope => {
-            if (typeof scope === 'string') {
-              subexpressions.push(_splatParams(scope));
-            } else if (_.isObject(scope) && scope.for && scope.in && scope.each) {
-              let subs = _.at(params, scope.in)[0];
-              if (!subs) {
-                missing.push(scope.in);
-                subexpressions.push(scope);
-                return;
-              }
-              subs.forEach(param => {
-                subexpressions.push(_splatParams(scope.each.replace(`<${scope.for}>`, param)));
-              });
-            } else if (_.isObject(scope) && scope.if && scope.then) {
-              hasConditional = true;
-              if (_.at(params, scope.if)[0]) {
-                subexpressions.push(_expandExpressionTemplate(scope.then));
-              }
-            } else {
-              subexpressions.push(_expandExpressionTemplate(scope));
-            }
-          });
-          return {[key]: subexpressions};
-        };
-
-        var scopeExpression = _expandExpressionTemplate(entry.scopes);
-
-        if (hasConditional && allowLater) {
-          debug('Conditional provided in scopes. Deferring authorization.');
-          return true;
-        }
+        var scopeExpression = expressions.expandExpressionTemplate(entry.scopes, params, missing);
 
         if (missing.length) {
           if (allowLater) {
@@ -589,7 +548,7 @@ var remoteAuthentication = function(options, entry) {
             '',
             '{{missing}}',
             '',
-            'You only have the scopes:',
+            'You have the scopes:',
             '',
             '{{scopes}}',
             '',
