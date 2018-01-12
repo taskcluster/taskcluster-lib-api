@@ -276,7 +276,15 @@ allowed time.
 
 The `req.authorize(params, options)` method returns `true` if the client satisfies
 the endpoint's scope expression. If the client does not satisfy the expression, it
-returns `false` and sends an error message unless `options.noReply` is true.
+throws an error with the code 'AuthorizationError'. You can catch this if you wish
+or let it bubble up and taskcluster-lib-api will return a detailed error message
+to the client.
+
+The AuthorizationError has 3 extra fields to help inspect the results.
+
+**err.scopes:** The scopeset containing the scopes the client has
+**err.expression:** The scope expression that was not satisfied
+**err.missing:** The reduced subset of the expression containing only scopes that were missing
 
 The first argument to `req.authorize` must be an object where the keys are parameters
 to the scope expression defined in the method definition. If any parameters are missing

@@ -77,6 +77,29 @@ suite('api/auth', function() {
     }
   });
 
+  // Declare a method we can test overriding errors with
+  api.declare({
+    method:       'get',
+    route:        '/crash-override',
+    name:         'override',
+    title:        'Test End-Point',
+    scopes:       {AllOf: ['service:<param>']},
+    description:  'Place we can call to test something',
+  }, async function(req, res) {
+    try {
+      await req.authorize({param: 'myfolder/resource'});
+      res.reply({});
+    } catch (err) {
+      if (err.code === 'AuthorizationError') {
+        // we probably wouldn't normally throw a resource expired error for
+        // missing scopes, but this is a convenient way to assert we have
+        // overridden the error
+        return res.reportError('ResourceExpired', 'bad things!', {});
+      }
+      throw err;
+    }
+  });
+
   // Declare a method we can test with no authentication
   api.declare({
     method:       'get',
@@ -251,6 +274,21 @@ suite('api/auth', function() {
       .then(res => assert(false, 'request didn\'t fail'))
       .catch(function(res) {
         assert(res.status === 403, 'Request didn\'t fail');
+      });
+  });
+
+  test('override error', function() {
+    var url = 'http://localhost:23526/crash-override';
+    return request
+      .get(url)
+      .hawk({
+        id:           'nobody',
+        key:          'test-token',
+        algorithm:    'sha256',
+      })
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
+        assert(res.status === 410, 'Request didn\'t fail');
       });
   });
 

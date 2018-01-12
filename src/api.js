@@ -373,7 +373,7 @@ var createRemoteSignatureValidator = function(options) {
  * client satisfies the scope expression in `options.scopes` after the
  * parameters denoted by `<...>` and `{for: ..., each: ..., in: ...}` are
  * substituted in. If the client does not satisfy the scope expression, it
- * returns `false` and sends an error message unless `options.noReply = true`.
+ * throws an expressions.AuthorizationError.
  *
  * The `req.scopes()` method returns a Promise for the set of scopes the caller
  * has. Please, note that `req.scopes()` returns `[]` if there was an
@@ -500,25 +500,22 @@ var remoteAuthentication = function(options, entry) {
       /**
        * Create method to check if request satisfies the scope expression. Given
        * extra parameters.
-       * Return true, if successful and if unsuccessful it replies with
-       * error to `res`, unless `options.noReply` is `true`.
+       * Return true, if successful and if unsuccessful it throws an expressions.AuthorizationError.
        */
       req.authorize = async function(params, options) {
-        var {noReply, allowLater} = options || {};
+        let {allowLater} = options || {};
         result = await (result || authenticate(req));
 
         // If authentication failed
         if (result.status === 'auth-failed') {
-          if (!noReply) {
-            res.set('www-authenticate', 'hawk');
-            res.reportError('AuthenticationFailed', result.message, result);
-          }
+          res.set('www-authenticate', 'hawk');
+          res.reportError('AuthenticationFailed', result.message, result);
           return false;
         }
 
         let missing = [];
 
-        var scopeExpression = expressions.expandExpressionTemplate(entry.scopes, params, missing);
+        let scopeExpression = expressions.expandExpressionTemplate(entry.scopes, params, missing);
 
         if (missing.length) {
           if (allowLater) {
@@ -533,16 +530,21 @@ var remoteAuthentication = function(options, entry) {
         }
 
         // Test that we have scope intersection, and hence, is authorized
-        var retval = scopes.satisfiesExpression(result.scopes, scopeExpression);
+        let authed = scopes.satisfiesExpression(result.scopes, scopeExpression);
         req.hasAuthed = true;
-        if (retval) {
+        if (authed) {
           // TODO: log this in a structured format when structured logging is
           // available https://bugzilla.mozilla.org/show_bug.cgi?id=1307271
           authLog(`Authorized ${await req.clientId()} for ${req.method} access to ${req.originalUrl}`);
         }
-        if (!retval && !noReply) {
-          let missing = scopes.removeGivenScopes(result.scopes, scopeExpression);
-          res.reportError('InsufficientScopes', [
+        if (!authed) {
+          let err = new Error('Authorization failed'); // This way instead of subclassing due to babel/babel#3083
+          err.name =  'AuthorizationError';
+          err.code =  'AuthorizationError';
+          err.scopes = result.scopes;
+          err.expression = scopeExpression;
+          err.missing = scopes.removeGivenScopes(result.scopes, scopeExpression);
+          err.report = [
             'You do not have sufficient scopes. You are missing the following scopes:',
             '',
             '{{missing}}',
@@ -553,11 +555,11 @@ var remoteAuthentication = function(options, entry) {
             '',
             'This request requires you to satisfy this scope expression:',
             '',
-            '{{scopeExpression}}',
-          ]
-            .join('\n'),  {missing, scopeExpression, scopes: result.scopes});
+            '{{expression}}',
+          ].join('\n');
+          throw err;
         }
-        return retval;
+        return authed;
       };
 
       req.hasAuthed = false;
@@ -571,6 +573,9 @@ var remoteAuthentication = function(options, entry) {
         next();
       }
     } catch (err) {
+      if (err.code === 'AuthorizationError') {
+        return res.reportError('InsufficientScopes', err.report, err);
+      }
       return res.reportInternalError(err, {apiMethodName: entry.name});
     };
   };
@@ -597,6 +602,9 @@ var handle = function(handler, context, name) {
         return res.reportInternalError(err, {apiMethodName: name});
       }
     }).catch(function(err) {
+      if (err.code === 'AuthorizationError') {
+        return res.reportError('InsufficientScopes', err.report, err);
+      }
       return res.reportInternalError(err, {apiMethodName: name});
     });
   };

@@ -1,3 +1,4 @@
+const scopes = require('taskcluster-lib-scopes');
 const _ = require('lodash');
 
 export const splatParams = (scope, params, missing) => scope.replace(/<([^>]+)>/g, (match, param) => {
