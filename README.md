@@ -179,7 +179,7 @@ This will not do any truthiness conversions, you must do that yourself if desire
 Given the following example:
 
 ```js
-  scopes: {AllOf: [{if: 'private', then: 'foo:bar'}]}
+  scopes: {if: 'private', then: {AllOf: ['foo:bar']}}
 ```
 
 We can call `authorize({private: false})` and the method call will be permitted

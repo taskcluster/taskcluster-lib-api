@@ -148,7 +148,7 @@ suite('api/auth', function() {
     }
   });
 
-  // Declare a method we can test with expression utilizing if/then
+  // Declare a couple methods we can test with expression utilizing if/then
   api.declare({
     method:       'get',
     route:        '/test-expression-if-then',
@@ -162,6 +162,22 @@ suite('api/auth', function() {
   }, async function(req, res) {
     if (await req.authorize({
       public: req.body.public,
+    })) {
+      return res.status(200).json('OK');
+    }
+  });
+  api.declare({
+    method:       'get',
+    route:        '/test-expression-if-then-2',
+    name:         'testExprAuth',
+    title:        'Test End-Point',
+    scopes:       {if: 'private', then: {AllOf: [
+      'some:scope:nobody:has',
+    ]}},
+    description:  'Place we can call to test something',
+  }, async function(req, res) {
+    if (await req.authorize({
+      private: !req.body.public,
     })) {
       return res.status(200).json('OK');
     }
@@ -591,6 +607,80 @@ suite('api/auth', function() {
 
   test('scope expression if/then (failure with no client)', function() {
     var url = 'http://localhost:23526/test-expression-if-then';
+    return request
+      .get(url)
+      .send({
+        public: false,
+      })
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
+        assert(res.status === 403, 'Request didn\'t fail');
+      });
+  });
+
+  test('scope expression if/then (success) 2', function() {
+    var url = 'http://localhost:23526/test-expression-if-then-2';
+    return request
+      .get(url)
+      .send({
+        public: true,
+      })
+      .hawk({
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256',
+      }, {
+        ext: new Buffer(JSON.stringify({
+          authorizedScopes:    ['nothing:useful'],
+        })).toString('base64'),
+      })
+      .then(function(res) {
+        if (!res.ok) {
+          console.log(JSON.stringify(res.body));
+          assert(false, 'Request failed');
+        }
+      });
+  });
+
+  test('scope expression if/then (success with no client) 2', function() {
+    var url = 'http://localhost:23526/test-expression-if-then-2';
+    return request
+      .get(url)
+      .send({
+        public: true,
+      })
+      .then(function(res) {
+        if (!res.ok) {
+          console.log(JSON.stringify(res.body));
+          assert(false, 'Request failed');
+        }
+      });
+  });
+
+  test('scope expression if/then (failure) 2', function() {
+    var url = 'http://localhost:23526/test-expression-if-then-2';
+    return request
+      .get(url)
+      .send({
+        public: false,
+      })
+      .hawk({
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256',
+      }, {
+        ext: new Buffer(JSON.stringify({
+          authorizedScopes:    ['nothing:useful'],
+        })).toString('base64'),
+      })
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
+        assert(res.status === 403, 'Request didn\'t fail');
+      });
+  });
+
+  test('scope expression if/then (failure with no client) 2', function() {
+    var url = 'http://localhost:23526/test-expression-if-then-2';
     return request
       .get(url)
       .send({

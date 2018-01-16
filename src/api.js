@@ -530,7 +530,7 @@ var remoteAuthentication = function(options, entry) {
         }
 
         // Test that we have scope intersection, and hence, is authorized
-        let authed = scopes.satisfiesExpression(result.scopes, scopeExpression);
+        let authed = !scopeExpression || scopes.satisfiesExpression(result.scopes, scopeExpression);
         req.hasAuthed = true;
         if (authed) {
           // TODO: log this in a structured format when structured logging is
@@ -766,8 +766,7 @@ API.prototype.declare = function(options, handler) {
       if (_.isObject(scope) && scope.for && scope.in && scope.each) {
         return 'looping-template-construct';
       } else if (_.isObject(scope) && scope.if && scope.then) {
-        assert(scopes.validExpression(scope.then));
-        return 'conditional-template-construct';
+        return scope.then;
       }
     })));
   }
