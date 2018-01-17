@@ -1,9 +1,51 @@
 {
-    "$id": "http://schemas.taskcluster.net/base/v1/api-reference.json#",
     "$schema": "http://json-schema.org/draft-06/schema#",
     "title": "API Reference File",
     "description": "Reference of methods implemented by API",
     "type": "object",
+    "definitions": {
+      "subExpression": {"type": "array", "items": {"$ref": "#/definitions/scopeExpressionTemplate"}},
+      "scopeExpressionTemplate": {
+        "oneOf": [
+          {"type": "string", "pattern": "^[\\x20-\\x7e]*$"},
+          {
+            "type": "object",
+            "properties": {
+              "AnyOf": {"$ref": "#/definitions/subExpression"}
+            },
+            "required": ["AnyOf"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "AllOf": {"$ref": "#/definitions/subExpression"}
+            },
+            "required": ["AllOf"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "if": {"type": "string", "pattern": "^[\\x20-\\x7e]*$"},
+              "then": {"$ref": "#/definitions/scopeExpressionTemplate"}
+            },
+            "required": ["if", "then"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "for": {"type": "string", "pattern": "^[\\x20-\\x7e]*$"},
+              "each": {"type": "string", "pattern": "^[\\x20-\\x7e]*$"},
+              "in": {"type": "string", "pattern": "^[\\x20-\\x7e]*$"}
+            },
+            "required": ["for", "each", "in"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
     "properties": {
         "version": {
             "description": "API reference version",
@@ -106,17 +148,8 @@
                         ]
                     },
                     "scopes": {
-                        "type": "array",
-                        "description": "List of scope-sets of which the client must satisfy at least one of the sets of scopes. Not provided if authentication isn't required.",
-                        "items": {
-                            "type": "array",
-                            "description": "A set of scopes that grants access if all the scopes in the set is satisfied.  Scopes must be composed of printable ASCII characters and spaces.",
-                            "items": {
-                                "type": "string",
-                                "description": "Scope identifier",
-                                "pattern": "^[\\x20-\\x7e]*$"
-                            }
-                        }
+                        "description": "Scope expression template specifying required scopes for a method. Not provided if authentication isn't required.",
+                        "$ref": "#/definitions/scopeExpressionTemplate"
                     },
                     "input": {
                         "type": "string",

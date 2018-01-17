@@ -761,12 +761,12 @@ API.prototype.declare = function(options, handler) {
   assert(!options.deferAuth,
     'deferAuth is deprecated! https://github.com/taskcluster/taskcluster-lib-api#request-handlers');
   if ('scopes' in options) {
-    assert(scopes.validExpression(_.cloneDeepWith(options.scopes, scope => {
+    assert(scopes.validExpression(_.cloneDeepWith(options.scopes, function morphExpression(scope) {
       // This makes these template constructs valid parts of an expression
       if (_.isObject(scope) && scope.for && scope.in && scope.each) {
         return 'looping-template-construct';
       } else if (_.isObject(scope) && scope.if && scope.then) {
-        return scope.then;
+        return _.cloneDeepWith(scope.then, morphExpression);
       }
     })));
   }
@@ -993,14 +993,11 @@ API.prototype.reference = function(options) {
   var validate = ajv.compile(JSON.parse(schema));
 
   // Check against it
-  var refSchema = 'http://schemas.taskcluster.net/base/v1/api-reference.json#';
-  var valid = validate(reference, refSchema);
+  var valid = validate(reference);
   if (!valid) {
-    debug('API.references(): Failed to validate against schema, errors: %j ' +
-          'reference: %j', validate.errors, reference);
     debug('Reference:\n%s', JSON.stringify(reference, null, 2));
-    debug('Errors:\n%s', JSON.stringify(validate.errors, null, 2));
-    throw new Error('API.references(): Failed to validate against schema');
+    throw new Error(`API.references(): Failed to validate against schema:\n
+      ${ajv.errorsText(validate.errors, {separator: '\n  * '})}`);
   }
 
   return reference;
