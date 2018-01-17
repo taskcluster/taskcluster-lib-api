@@ -2712,9 +2712,9 @@ taskcluster-lib-monitor@^4.6.3:
     taskcluster-client "^1.0.1"
     usage "^0.7.1"
 
-taskcluster-lib-scopes@^1.7.0:
-  version "1.7.0"
-  resolved "https://registry.yarnpkg.com/taskcluster-lib-scopes/-/taskcluster-lib-scopes-1.7.0.tgz#e7104cb1b03acd05094dadfa15c7c732428c6afd"
+taskcluster-lib-scopes@^1.8.0:
+  version "1.8.0"
+  resolved "https://registry.yarnpkg.com/taskcluster-lib-scopes/-/taskcluster-lib-scopes-1.8.0.tgz#a3dadd33ea1d52b8fac2673076d6e4ccb885fb02"
   dependencies:
     babel-runtime "^6.26.0"
 
