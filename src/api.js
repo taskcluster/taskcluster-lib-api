@@ -532,11 +532,7 @@ var remoteAuthentication = function(options, entry) {
         // Test that we have scope intersection, and hence, is authorized
         let authed = !scopeExpression || scopes.satisfiesExpression(result.scopes, scopeExpression);
         req.hasAuthed = true;
-        if (authed) {
-          // TODO: log this in a structured format when structured logging is
-          // available https://bugzilla.mozilla.org/show_bug.cgi?id=1307271
-          authLog(`Authorized ${await req.clientId()} for ${req.method} access to ${req.originalUrl}`);
-        }
+
         if (!authed) {
           let err = new Error('Authorization failed'); // This way instead of subclassing due to babel/babel#3083
           err.name =  'AuthorizationError';
@@ -559,7 +555,11 @@ var remoteAuthentication = function(options, entry) {
           ].join('\n');
           throw err;
         }
-        return authed;
+
+        // TODO: log this in a structured format when structured logging is
+        // available https://bugzilla.mozilla.org/show_bug.cgi?id=1307271
+        authLog(`Authorized ${await req.clientId()} for ${req.method} access to ${req.originalUrl}`);
+        return true;
       };
 
       req.hasAuthed = false;

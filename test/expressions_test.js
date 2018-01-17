@@ -1,7 +1,7 @@
 const assert = require('assert');
 const expressions = require('../lib/expressions');
 
-suite('expression success', function() {
+suite('expression expansion success', function() {
 
   function scenario(expr, params, result, shouldFail=false) {
     return () => {
@@ -53,7 +53,7 @@ suite('expression success', function() {
   });
 });
 
-suite('expression missing', function() {
+suite('expression expansion missing params', function() {
 
   function scenario(expr, params, shouldBeMissing) {
     return () => {

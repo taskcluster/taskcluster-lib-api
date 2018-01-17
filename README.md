@@ -153,7 +153,7 @@ and `workerType`, *or* the caller's scopes satisfy all of
 If scope validation fails, the user is presented with an extensive error
 message indicating the available and required scopes.
 
-Arrays of required scopes can also be templated in the scopes section. When
+Given an array of parameters, an array of scopes can be templated using `for`. When
 this form is used, the parameter in the `in` section must be an array. The
 value of `each` *must* be a simple template string and cannot be a scope
 expression or another template object. This will not allow recursive
@@ -182,11 +182,11 @@ Given the following example:
   scopes: {if: 'private', then: {AllOf: ['foo:bar']}}
 ```
 
-We can call `authorize({private: false})` and the method call will be permitted
+We can call `async req.authorize({private: false})` and the method call will be permitted
 even if the client does not have the scope `foo:bar`.
 
 In addition, parameters can be nested objects and accessed with dotted notation.
-Given parameters `task` that is `{extra: {treeherder: {symbol: 'F'}}}`, we can do
+Given the parameter `task` that is `{extra: {treeherder: {symbol: 'F'}}}`, we can do
 the following:
 
 ```js
@@ -200,8 +200,8 @@ which evaluates to
 ```
 
 When you specify scopes required to access an endpoint, by default all of the params
-specified in the `params` section will be substituted in and the expression satisfaction
-will be checked against the client's scopes. If any of the parameters specified in
+specified in the `params` section of the request will be substituted in and the expression
+satisfaction will be checked against the client's scopes. If any of the parameters specified in
 your scopes are _not_ in the `params`, this satisfaction check will be deferred and the
 endpoint implementation _must_ check for authorization manually as described below. If
 this check does not occur, taskcluster-lib-api will throw an error for the result of the
@@ -274,7 +274,7 @@ includes some additional security token, its duration should be limited to this
 expiration time to prevent callers from extending their access beyond the
 allowed time.
 
-The `req.authorize(params, options)` method returns `true` if the client satisfies
+The `async req.authorize(params, options)` method returns `true` if the client satisfies
 the endpoint's scope expression. If the client does not satisfy the expression, it
 throws an error with the code 'AuthorizationError'. You can catch this if you wish
 or let it bubble up and taskcluster-lib-api will return a detailed error message
