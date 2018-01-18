@@ -519,14 +519,14 @@ var remoteAuthentication = function(options, entry) {
 
         if (missing.length) {
           if (allowLater) {
-            debug(`Not all parameters supplied yet. Deferring authorization due to missing parameters: ${req.missing}`);
+            debug(`Not all parameters supplied yet. Deferring authorization for due to missing parameters: ${missing}`);
             return true;
           }
-          return res.reportInternalError('InternalServerError', [
-            'Not all parameters were supplied to a scope check.',
-            'The call to req.authorize was not allowed to be partially',
-            'applied. Missing parameters: {{missing}}',
-          ].join('\n'), {missing: req.missing});
+          return res.reportInternalError(new Error(`
+            Not all parameters were supplied to a scope check.
+            The call to req.authorize was not allowed to be partially
+            applied. Missing parameters: ${JSON.stringify(missing)}`,
+          ), {missing});
         }
 
         // Test that we have scope intersection, and hence, is authorized
