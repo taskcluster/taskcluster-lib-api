@@ -70,11 +70,10 @@ suite('api/auth', function() {
     scopes:       {AllOf: ['service:<param>']},
     description:  'Place we can call to test something',
   }, async function(req, res) {
-    if (await req.authorize({
+    await req.authorize({
       param:      'myfolder/resource',
-    })) {
-      res.status(200).json('OK');
-    }
+    });
+    res.status(200).json('OK');
   });
 
   // Declare a method we can test overriding errors with
@@ -121,9 +120,8 @@ suite('api/auth', function() {
     scopes:       {AllOf: [{for: 'scope', in: 'request.scopes', each: '<scope>'}]},
     description:  'Place we can call to test something',
   }, async function(req, res) {
-    if (await req.authorize({request: req.body})) {
-      return res.status(200).json('OK');
-    }
+    await req.authorize({request: req.body});
+    return res.status(200).json('OK');
   });
 
   // Declare a method we can test with expression authorization again
@@ -139,13 +137,12 @@ suite('api/auth', function() {
     ]},
     description:  'Place we can call to test something',
   }, async function(req, res) {
-    if (await req.authorize({
+    await req.authorize({
       provisionerId:    req.params.provisionerId,
       workerType:       req.params.workerType,
       task:             req.body,
-    })) {
-      return res.status(200).json('OK');
-    }
+    });
+    return res.status(200).json('OK');
   });
 
   // Declare a couple methods we can test with expression utilizing if/then
@@ -160,11 +157,10 @@ suite('api/auth', function() {
     ]},
     description:  'Place we can call to test something',
   }, async function(req, res) {
-    if (await req.authorize({
+    await req.authorize({
       public: req.body.public,
-    })) {
-      return res.status(200).json('OK');
-    }
+    });
+    return res.status(200).json('OK');
   });
   api.declare({
     method:       'get',
@@ -176,11 +172,10 @@ suite('api/auth', function() {
     ]}},
     description:  'Place we can call to test something',
   }, async function(req, res) {
-    if (await req.authorize({
+    await req.authorize({
       private: !req.body.public,
-    })) {
-      return res.status(200).json('OK');
-    }
+    });
+    return res.status(200).json('OK');
   });
 
   // Declare a method we can test with expression utilizing if/then but then forget to auth

@@ -153,7 +153,7 @@ and `workerType`, *or* the caller's scopes satisfy all of
 If scope validation fails, the user is presented with an extensive error
 message indicating the available and required scopes.
 
-Given an array of parameters, an array of scopes can be templated using `for`. When
+Given an array of parameters, an array of scopes can be templated. When
 this form is used, the parameter in the `in` section must be an array. The
 value of `each` *must* be a simple template string and cannot be a scope
 expression or another template object. This will not allow recursive
@@ -274,9 +274,9 @@ includes some additional security token, its duration should be limited to this
 expiration time to prevent callers from extending their access beyond the
 allowed time.
 
-The `async req.authorize(params, options)` method returns `true` if the client satisfies
-the endpoint's scope expression. If the client does not satisfy the expression, it
-throws an error with the code 'AuthorizationError'. You can catch this if you wish
+The `async req.authorize(params, options)` throws an error with the code
+'AuthorizationError' if the client does not satisfy the scope
+expression in `options.scopes`. You can catch this if you wish
 or let it bubble up and taskcluster-lib-api will return a detailed error message
 to the client.
 
@@ -288,8 +288,7 @@ The AuthorizationError has 3 extra fields to help inspect the results.
 
 The first argument to `req.authorize` must be an object where the keys are parameters
 to the scope expression defined in the method definition. If any parameters are missing
-when you call this, the check will error unless you pass `options.allowLater`. This is
-only for special cases and should be rarely used. The rules for how the scope expression
+when you call this, the check will throw an error. The rules for how the scope expression
 defined in the method is transformed given a set of parameters is described above.
 
 To return a successful result with a JSON body, return `res.reply(result)`.

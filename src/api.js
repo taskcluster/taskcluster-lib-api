@@ -559,7 +559,6 @@ var remoteAuthentication = function(options, entry) {
         // TODO: log this in a structured format when structured logging is
         // available https://bugzilla.mozilla.org/show_bug.cgi?id=1307271
         authLog(`Authorized ${await req.clientId()} for ${req.method} access to ${req.originalUrl}`);
-        return true;
       };
 
       req.hasAuthed = false;
@@ -569,7 +568,8 @@ var remoteAuthentication = function(options, entry) {
       if (!entry.scopes) {
         req.hasAuthed = true;  // No need to check auth if there are no scopes
         next();
-      } else if (await req.authorize(req.params, {allowLater: true})) {
+      } else {
+        await req.authorize(req.params, {allowLater: true});
         next();
       }
     } catch (err) {
