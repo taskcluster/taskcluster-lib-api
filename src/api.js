@@ -522,11 +522,11 @@ var remoteAuthentication = function(options, entry) {
             debug(`Not all parameters supplied yet. Deferring authorization for due to missing parameters: ${missing}`);
             return true;
           }
-          return res.reportInternalError(new Error(`
+          throw new Error(`
             Not all parameters were supplied to a scope check.
             The call to req.authorize was not allowed to be partially
             applied. Missing parameters: ${JSON.stringify(missing)}`,
-          ), {missing});
+          );
         }
 
         // Test that we have scope intersection, and hence, is authorized

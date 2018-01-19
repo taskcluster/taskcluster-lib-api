@@ -206,6 +206,19 @@ suite('api/auth', function() {
     return res.reply({});
   });
 
+  // Declare a method we can test dynamic authorization but have missing call to auth
+  api.declare({
+    method:       'get',
+    route:        '/test-dyn-auth-missing-authorize',
+    name:         'testDynAuthNoAuthorize',
+    title:        'Test End-Point',
+    scopes:       {AllOf: [{for: 'scope', in: 'request.scopes', each: '<scope>'}]},
+    description:  'Place we can call to test something',
+  }, async function(req, res) {
+    await req.authorize({foo: 'bar'});
+    return res.reply({});
+  });
+
   // Create a mock authentication server
   setup(async () => {
     testing.fakeauth.start({
@@ -705,6 +718,30 @@ suite('api/auth', function() {
 
   test('dyn auth but no call to authorize', function() {
     var url = 'http://localhost:23526/test-dyn-auth-no-authorize';
+    return request
+      .get(url)
+      .send({
+        scopes: [
+          'got-only/this*',
+        ],
+      })
+      .hawk({
+        id:           'rockstar',
+        key:          'groupie',
+        algorithm:    'sha256',
+      }, {
+        ext: new Buffer(JSON.stringify({
+          authorizedScopes:    ['got-only/this'],
+        })).toString('base64'),
+      })
+      .then(res => assert(false, 'request didn\'t fail'))
+      .catch(function(res) {
+        assert(res.status === 500, 'Request didn\'t fail');
+      });
+  });
+
+  test('dyn auth but missing authorize', function() {
+    var url = 'http://localhost:23526/test-dyn-auth-missing-authorize';
     return request
       .get(url)
       .send({
