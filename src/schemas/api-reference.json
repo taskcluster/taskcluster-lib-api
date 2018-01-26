@@ -171,11 +171,13 @@
                     "output": {
                         "oneOf": [
                             {
+                                "title": "Output Schema",
                                 "type": "string",
                                 "format": "uri",
                                 "description": "JSON schema for output, if output is provided otherwise not present."
                             },
                             {
+                                "title": "Blob",
                                 "type": "string",
                                 "const": "blob",
                                 "description": "Output kind if not JSON matching a specific schema."
