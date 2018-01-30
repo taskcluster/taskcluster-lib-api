@@ -804,7 +804,6 @@ API.prototype.router = function(options) {
     signatureValidator:   createRemoteSignatureValidator({
       authBaseUrl:        options.authBaseUrl || AUTH_BASE_URL,
     }),
-    raven:                null,
   });
 
   // Validate context
@@ -820,7 +819,7 @@ API.prototype.router = function(options) {
   }
 
   if (options.drain || options.component || options.raven) {
-    console.log('taskcluster-lib-stats is now deprecated!\n' +
+    throw new Error('taskcluster-lib-stats is now deprecated!\n' +
                 'Use the `monitor` option rather than `drain`.\n' +
                 '`monitor` should be an instance of taskcluster-lib-monitor.\n' +
                 '`component` is no longer needed. Prefix your `monitor` before use.\n' +
@@ -878,7 +877,7 @@ API.prototype.router = function(options) {
     // Add authentication, schema validation and handler
     middleware.push(
       errors.BuildReportErrorMethod(
-        entry.name, this._options.errorCodes, monitor || options.raven,
+        entry.name, this._options.errorCodes, monitor,
         entry.cleanPayload
       ),
       bodyParser.text({

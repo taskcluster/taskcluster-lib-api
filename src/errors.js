@@ -25,7 +25,7 @@ exports.ERROR_CODES = ERROR_CODES;
  *
  * The `method` is the name of the API method, `errorCodes` is a mapping from
  * allowed error codes to HTTP status codes, and `monitor` is an instance of
- * `raven.Client` from the `raven` npm module or an instance of taskcluster-lib-monitor.
+ * `raven.Client` from an instance of taskcluster-lib-monitor.
  */
 let BuildReportErrorMethod = (method, errorCodes, monitor, cleanPayload) => {
   return (req, res, next) => {
