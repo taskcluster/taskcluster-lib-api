@@ -146,7 +146,7 @@ var schema = function(validate, options) {
     res.reply = function(json) {
       if (!req.hasAuthed) {
         let err = new Error('Deferred auth was never checked!');
-        return res.reportInternalError(err, {apiMethodName: options.name});
+        return res.reportInternalError(err);
       }
       // If we're supposed to validate outgoing messages and output schema is
       // defined, then we have to validate against it...
@@ -159,7 +159,7 @@ var schema = function(validate, options) {
           err.schema = options.output;
           err.url = req.url;
           err.payload = json;
-          return res.reportInternalError(err, {apiMethodName: options.name});
+          return res.reportInternalError(err);
         }
       }
       // If JSON was valid or validation was skipped then reply with 200 OK
@@ -577,7 +577,7 @@ var remoteAuthentication = function(options, entry) {
       if (err.code === 'AuthorizationError') {
         return res.reportError('InsufficientScopes', err.report, err);
       }
-      return res.reportInternalError(err, {apiMethodName: entry.name});
+      return res.reportInternalError(err);
     };
   };
 };
@@ -600,13 +600,13 @@ var handle = function(handler, context, name) {
         // been sent at this point. It will report to sentry however!
         // This is only to catch the case where people do not use res.reply()
         let err = new Error('req.authorize was never called, or some parameters were missing from the request');
-        return res.reportInternalError(err, {apiMethodName: name});
+        return res.reportInternalError(err);
       }
     }).catch(function(err) {
       if (err.code === 'AuthorizationError') {
         return res.reportError('InsufficientScopes', err.report, err);
       }
-      return res.reportInternalError(err, {apiMethodName: name});
+      return res.reportInternalError(err);
     });
   };
 };
