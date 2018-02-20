@@ -1,15 +1,12 @@
 {
   "name": "taskcluster-lib-api",
-  "version": "6.0.4",
+  "version": "7.0.0",
   "author": "Jonas Finnemann Jensen <jopsen@gmail.com>",
   "description": "taskcluster-lib-api",
   "license": "MPL-2.0",
   "scripts": {
-    "compile": "babel-compile -p taskcluster src:lib test:.test",
-    "prepublish": "yarn compile",
-    "lint": "eslint src/*.js test/*.js",
-    "pretest": "yarn lint && yarn compile",
-    "test": "mocha .test/*_test.js"
+    "lint": "eslint lib/*.js test/*.js",
+    "test": "mocha test/*_test.js"
   },
   "files": [
     "lib"
@@ -21,7 +18,6 @@
   "dependencies": {
     "ajv": "^5.3.0",
     "aws-sdk": "^2.151.0",
-    "babel-runtime": "^6.26.0",
     "body-parser": "1.18.2",
     "debug": "^3.1.0",
     "express": "4.16.2",
@@ -35,11 +31,8 @@
     "uuid": "^3.1.0"
   },
   "devDependencies": {
-    "babel-compile": "^2.0.0",
-    "babel-preset-taskcluster": "^3.0.0",
     "eslint-config-taskcluster": "^3.0.0",
     "mocha": "4.0.1",
-    "source-map-support": "^0.5.0",
     "superagent": "^3.8.1",
     "superagent-hawk": "^0.0.6",
     "taskcluster-lib-app": "^2.0.3",

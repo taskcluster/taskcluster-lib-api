@@ -10,7 +10,7 @@ var runningServer = null;
  * Set up a testing server on port 23525 serving the given API.  If mointor is
  * specified, it is added to the router.
  */
-export const setupServer = async ({api, monitor}) => {
+module.exports.setupServer = async ({api, monitor}) => {
   testing.fakeauth.start();
   assert(runningServer === null);
 
@@ -39,7 +39,7 @@ export const setupServer = async ({api, monitor}) => {
   });
 };
 
-export const teardownServer = async () => {
+module.exports.teardownServer = async () => {
   if (runningServer) {
     await new Promise(function(accept) {
       runningServer.once('close', function() {
