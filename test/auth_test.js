@@ -62,7 +62,8 @@ suite('api/auth', function() {
     await _apiServer.terminate();
   });
 
-  const testEndpoint = ({method, route, scopes = null, handler, tests}) => {
+  const testEndpoint = ({method, route, scopes = null, handler, handlerBuilder, tests}) => {
+    let sideEffects = {};
     api.declare({
       method,
       route,
@@ -70,7 +71,7 @@ suite('api/auth', function() {
       title: 'placeholder',
       description: 'placeholder',
       scopes,
-    }, handler);
+    }, handler || handlerBuilder(sideEffects));
     const buildUrl = (params = {}) => {
       const path = route.replace(/:[a-zA-Z][a-zA-Z0-9]+/g, match => {
         const result = params[match.replace(/^:/, '')];
@@ -90,8 +91,11 @@ suite('api/auth', function() {
       const url = buildUrl(params);
       const auth = buildHawk(id);
       test(label, async () => {
+        for (let key of Object.keys(sideEffects)) {
+          delete sideEffects[key];
+        }
         try {
-          const res = await tester(auth, url);
+          const res = await tester(auth, url, sideEffects);
           assert.equal(res.status, desiredStatus);
         } catch (err) {
           assert.equal(err.status, desiredStatus);
@@ -135,6 +139,12 @@ suite('api/auth', function() {
         label: 'request with static scope - fail no scope',
         desiredStatus: 403,
         id: 'nobody',
+        tester: (auth, url) => request.get(url).hawk(auth),
+      },
+      {
+        label: 'request with static scope - fail bad authentication',
+        desiredStatus: 401,
+        id: 'doesntexist',
         tester: (auth, url) => request.get(url).hawk(auth),
       },
       {
@@ -650,6 +660,47 @@ suite('api/auth', function() {
               authorizedScopes:    ['got-only/this'],
             })).toString('base64'),
           }),
+      },
+    ],
+  });
+
+  testEndpoint({
+    method: 'get',
+    route: '/test-bad-auth-side-effects',
+    scopes: 'something<foo>',
+    handlerBuilder: sideEffects => async (req, res) => {
+      await req.authorize({foo: 'bar'});
+      sideEffects['got-here'] = true;
+      return res.reply({});
+    },
+    tests: [
+      {
+        label: 'side effects on too-few scopes',
+        id: 'nobody',
+        desiredStatus: 403,
+        tester: async (auth, url, sideEffects) => {
+          try {
+            await request.get(url).hawk(auth);
+            assert(false, 'should have failed');
+          } catch (err) {
+            assert(!sideEffects['got-here'], 'side effect occured after failed authorization!');
+            return err;
+          }
+        },
+      },
+      {
+        label: 'side effects on failed authentication',
+        id: 'does-not-exist',
+        desiredStatus: 401,
+        tester: async (auth, url, sideEffects) => {
+          try {
+            await request.get(url).hawk(auth);
+            assert(false, 'should have failed');
+          } catch (err) {
+            assert(!sideEffects['got-here'], 'side effect occured after failed authorization!');
+            return err;
+          }
+        },
       },
     ],
   });
