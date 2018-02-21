@@ -22,6 +22,11 @@ suite('API (context)', function() {
       title:    'Test End-Point',
       description:  'Place we can call to test something',
     }, function(req, res) {
+      assert(typeof this.log === 'object');
+      for (let lvl of ['trace','debug','info','warn','error','fatal']) {
+        assert(typeof this.log[lvl] === 'function');
+        this.log[lvl]('hello from the ' + lvl + ' logging level');
+      }
       res.status(200).json({myProp: this.myProp});
     });
 
