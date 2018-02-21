@@ -6,6 +6,10 @@ var express         = require('express');
 
 var runningServer = null;
 
+process.on('unhandledRejection', err => {
+  throw err;
+});
+
 /**
  * Set up a testing server on port 23525 serving the given API.  If mointor is
  * specified, it is added to the router.
