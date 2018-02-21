@@ -66,7 +66,7 @@ suite('API (context)', function() {
       });
   });
 
-  test.only('Context logger can be created in all supported ways', async () => {
+  test('Context logger can be created in all supported ways', async () => {
     var api = new subject({
       title:        'Test Api no logger param',
       description:  'Another test api',
