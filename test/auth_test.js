@@ -28,10 +28,10 @@ suite('api/auth', function() {
   setup(async () => {
     testing.fakeauth.start({
       'test-client': ['service:magic'],
-      rockstar:    ['*'],
-      nobody:      ['another-irrelevant-scope'],
-      param:       ['service:myfolder/resource'],
-      param2:      ['service:myfolder/resource', 'service:myfolder/other-resource'],
+      admin: ['*'],
+      nobody: ['another-irrelevant-scope'],
+      param: ['service:myfolder/resource'],
+      param2: ['service:myfolder/resource', 'service:myfolder/other-resource'],
     });
 
     // Create router
@@ -81,11 +81,17 @@ suite('api/auth', function() {
       });
       return `http://localhost:23526${path}`;
     };
-    tests.forEach(({label, desiredStatus=200, params, tester}) => {
+    const buildHawk = id => ({
+      id,
+      key: 'not-used-by-fakeauth',
+      algorithm: 'sha256',
+    });
+    tests.forEach(({label, id, desiredStatus=200, params, tester}) => {
       const url = buildUrl(params);
+      const auth = buildHawk(id);
       test(label, async () => {
         try {
-          const res = await tester(url);
+          const res = await tester(auth, url);
           assert.equal(res.status, desiredStatus);
         } catch (err) {
           assert.equal(err.status, desiredStatus);
@@ -106,13 +112,8 @@ suite('api/auth', function() {
       {
         label: 'function that still uses satisfies fails',
         desiredStatus: 500,
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'nobody',
-            key:          'test-token',
-            algorithm:    'sha256',
-          }),
+        id: 'nobody',
+        tester: (auth, url) => request.get(url).hawk(auth),
       },
     ],
   });
@@ -127,71 +128,47 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'request with static scope',
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'test-client',
-            key:          'test-token',
-            algorithm:    'sha256',
-          }),
+        id: 'test-client',
+        tester: (auth, url) => request.get(url).hawk(auth),
       },
       {
         label: 'request with static scope - fail no scope',
         desiredStatus: 403,
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'nobody',
-            key:          'test-token',
-            algorithm:    'sha256',
-          }),
+        id: 'nobody',
+        tester: (auth, url) => request.get(url).hawk(auth),
       },
       {
         label: 'static-scope with authorizedScopes',
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
-            ext: new Buffer(JSON.stringify({
-              authorizedScopes:    ['service:magic'],
-            })).toString('base64'),
-          }),
+        id: 'admin',
+        tester: (auth, url) => request.get(url).hawk(auth, {
+          ext: new Buffer(JSON.stringify({
+            authorizedScopes:    ['service:magic'],
+          })).toString('base64'),
+        }),
       },
       {
         label: 'static-scope with authorizedScopes (star)',
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
-            ext: new Buffer(JSON.stringify({
-              authorizedScopes:    ['service:ma*'],
-            })).toString('base64'),
-          }),
+        id: 'admin',
+        tester: (auth, url) => request.get(url).hawk(auth, {
+          ext: new Buffer(JSON.stringify({
+            authorizedScopes:    ['service:ma*'],
+          })).toString('base64'),
+        }),
       },
       {
         label: 'static-scope with authorizedScopes (too strict)',
+        id: 'admin',
         desiredStatus: 403,
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
-            ext: new Buffer(JSON.stringify({
-              authorizedScopes:    ['some-irrelevant-scope'],
-            })).toString('base64'),
-          }),
+        tester: (auth, url) => request.get(url).hawk(auth, {
+          ext: new Buffer(JSON.stringify({
+            authorizedScopes:    ['some-irrelevant-scope'],
+          })).toString('base64'),
+        }),
       },
       {
         label: 'static-scope with temporary credentials (star scope)',
-        tester: url => {
+        id: 'admin',
+        tester: (auth, url) => {
           var expiry = new Date();
           expiry.setMinutes(expiry.getMinutes() + 5);
 
@@ -204,7 +181,7 @@ suite('api/auth', function() {
             signature:        null,
           };
 
-          var key = 'groupie';
+          var key = 'whatever';
 
           // Create signature
           var signature = crypto.createHmac('sha256', key)
@@ -231,11 +208,7 @@ suite('api/auth', function() {
           // Send request
           return request
             .get(url)
-            .hawk({
-              id:           'rockstar',
-              key:          tempKey,
-              algorithm:    'sha256',
-            }, {
+            .hawk(auth, {
               ext: new Buffer(JSON.stringify({
                 certificate:  certificate,
               })).toString('base64'),
@@ -244,7 +217,8 @@ suite('api/auth', function() {
       },
       {
         label: 'static-scope with temporary credentials (exact scope)',
-        tester: url => {
+        id: 'admin',
+        tester: (auth, url) => {
           var expiry = new Date();
           expiry.setMinutes(expiry.getMinutes() + 5);
 
@@ -257,7 +231,7 @@ suite('api/auth', function() {
             signature:        null,
           };
 
-          var key = 'groupie';
+          var key = 'whatever';
 
           // Create signature
           var signature = crypto.createHmac('sha256', key)
@@ -284,11 +258,7 @@ suite('api/auth', function() {
           // Send request
           return request
             .get(url)
-            .hawk({
-              id:           'rockstar',
-              key:          tempKey,
-              algorithm:    'sha256',
-            }, {
+            .hawk(auth, {
               ext: new Buffer(JSON.stringify({
                 certificate:  certificate,
               })).toString('base64'),
@@ -312,13 +282,8 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'request scopes from caller',
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'test-client',
-            key:          'test-token',
-            algorithm:    'sha256',
-          })
+        id: 'test-client',
+        tester: (auth, url) => request.get(url).hawk(auth)
           .then(function(res) {
             assert(res.ok, 'Request failed');
             assert(res.body.scopes.length === 1, 'wrong number of scopes');
@@ -344,24 +309,14 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'parameterized scopes',
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'param',
-            key:          '--',
-            algorithm:    'sha256',
-          }),
+        id: 'param',
+        tester: (auth, url) => request.get(url).hawk(auth),
       },
       {
         label: 'can\'t cheat parameterized scopes',
+        id: 'nobody',
         desiredStatus: 403,
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'nobody',
-            key:          'test-token',
-            algorithm:    'sha256',
-          }),
+        tester: (auth, url) => request.get(url).hawk(auth),
       },
     ],
   });
@@ -382,24 +337,14 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'Parameterized scopes, if authorized is called twice',
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'param2',
-            key:          '--',
-            algorithm:    'sha256',
-          }),
+        id: 'param2',
+        tester: (auth, url) => request.get(url).hawk(auth),
       },
       {
         label: 'Parameterized scopes, if authorized is called twice, with bad scope',
         desiredStatus: 403,
-        tester: url =>  request
-          .get(url)
-          .hawk({
-            id:           'param',
-            key:          '--',
-            algorithm:    'sha256',
-          }),
+        id: 'param',
+        tester: (auth, url) => request.get(url).hawk(auth),
       },
     ],
   });
@@ -425,14 +370,9 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'override error',
+        id: 'nobody',
         desiredStatus: 410,
-        tester: url => request
-          .get(url)
-          .hawk({
-            id:           'nobody',
-            key:          'test-token',
-            algorithm:    'sha256',
-          }),
+        tester: (auth, url) => request.get(url).hawk(auth),
       },
     ],
   });
@@ -447,7 +387,7 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'public unauthenticated endpoint',
-        tester: url => request.get(url),
+        tester: (auth, url) => request.get(url),
       },
     ],
   });
@@ -463,7 +403,8 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'With dynamic authentication',
-        tester: url => request
+        id: 'admin',
+        tester: (auth, url) => request
           .get(url)
           .send({
             scopes: [
@@ -474,15 +415,12 @@ suite('api/auth', function() {
               'got-only/this',
             ],
           })
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }),
+          .hawk(auth),
       },
       {
         label: 'With dynamic authentication (authorizedScopes)',
-        tester: url => request
+        id: 'admin',
+        tester: (auth, url) => request
           .get(url)
           .send({
             scopes: [
@@ -493,11 +431,7 @@ suite('api/auth', function() {
               'got-only/this',
             ],
           })
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
+          .hawk(auth, {
             ext: new Buffer(JSON.stringify({
               authorizedScopes:    ['got-all/*', 'got-only/this'],
             })).toString('base64'),
@@ -506,7 +440,8 @@ suite('api/auth', function() {
       {
         label: 'With dynamic authentication (miss scoped)',
         desiredStatus: 403,
-        tester: url => request
+        id: 'admin',
+        tester: (auth, url) => request
           .get(url)
           .send({
             scopes: [
@@ -518,11 +453,7 @@ suite('api/auth', function() {
               'got-*',
             ],
           })
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
+          .hawk(auth, {
             ext: new Buffer(JSON.stringify({
               authorizedScopes:    ['got-all/*', 'got-only/this'],
             })).toString('base64'),
@@ -531,18 +462,15 @@ suite('api/auth', function() {
       {
         label: 'With dynamic authentication (miss scoped again)',
         desiredStatus: 403,
-        tester: url => request
+        id: 'admin',
+        tester: (auth, url) => request
           .get(url)
           .send({
             scopes: [
               'got-only/this*',
             ],
           })
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
+          .hawk(auth, {
             ext: new Buffer(JSON.stringify({
               authorizedScopes:    ['got-only/this'],
             })).toString('base64'),
@@ -571,18 +499,15 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'extra scope expresesions',
+        id: 'admin',
         params: {provisionerId: 'test-provisioner', workerType: 'test-worker'},
-        tester: url => request
+        tester: (auth, url) => request
           .get(url)
           .send({
             routes: ['routeA', 'routeB'],
             scopes: ['scope1', 'scope2'],
           })
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }),
+          .hawk(auth),
       },
     ],
   });
@@ -602,16 +527,13 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'scope expression if/then (success)',
-        tester: url => request
+        id: 'admin',
+        tester: (auth, url) => request
           .get(url)
           .send({
             public: true,
           })
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
+          .hawk(auth, {
             ext: new Buffer(JSON.stringify({
               authorizedScopes:    ['nothing:useful'],
             })).toString('base64'),
@@ -619,7 +541,7 @@ suite('api/auth', function() {
       },
       {
         label: 'scope expression if/then (success with no client)',
-        tester: url => request
+        tester: (auth, url) => request
           .get(url)
           .send({
             public: true,
@@ -628,16 +550,13 @@ suite('api/auth', function() {
       {
         label: 'scope expression if/then (failure)',
         desiredStatus: 403,
-        tester: url => request
+        id: 'admin',
+        tester: (auth, url) => request
           .get(url)
           .send({
             public: false,
           })
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
+          .hawk(auth, {
             ext: new Buffer(JSON.stringify({
               authorizedScopes:    ['nothing:useful'],
             })).toString('base64'),
@@ -646,7 +565,7 @@ suite('api/auth', function() {
       {
         label: 'scope expression if/then (failure with no client)',
         desiredStatus: 403,
-        tester: url => request
+        tester: (auth, url) => request
           .get(url)
           .send({
             public: false,
@@ -669,14 +588,11 @@ suite('api/auth', function() {
       {
         label: 'forgot to auth',
         desiredStatus: 500,
-        tester: url => request
+        id: 'admin',
+        tester: (auth, url) => request
           .get(url)
           .send({})
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }),
+          .hawk(auth),
       },
     ],
   });
@@ -692,18 +608,15 @@ suite('api/auth', function() {
       {
         label: 'forgot to auth dyn-auth',
         desiredStatus: 500,
-        tester: url => request
+        id: 'admin',
+        tester: (auth, url) => request
           .get(url)
           .send({
             scopes: [
               'got-only/this*',
             ],
           })
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
+          .hawk(auth, {
             ext: new Buffer(JSON.stringify({
               authorizedScopes:    ['got-only/this'],
             })).toString('base64'),
@@ -723,19 +636,16 @@ suite('api/auth', function() {
     tests: [
       {
         label: 'forgot to auth dyn-auth',
+        id: 'admin',
         desiredStatus: 500,
-        tester: url => request
+        tester: (auth, url) => request
           .get(url)
           .send({
             scopes: [
               'got-only/this*',
             ],
           })
-          .hawk({
-            id:           'rockstar',
-            key:          'groupie',
-            algorithm:    'sha256',
-          }, {
+          .hawk(auth, {
             ext: new Buffer(JSON.stringify({
               authorizedScopes:    ['got-only/this'],
             })).toString('base64'),
