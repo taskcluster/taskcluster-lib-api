@@ -66,6 +66,34 @@ suite('API (context)', function() {
       });
   });
 
+  test.only('Context logger can be created in all supported ways', async () => {
+    var api = new subject({
+      title:        'Test Api no logger param',
+      description:  'Another test api',
+    });
+    assert(typeof api._rootLogger === 'object');
+    api._rootLogger.info('I was created without a name');
+
+    api = new subject({
+      title:        'Test Api',
+      description:  'Another test api',
+      logger:       'logger-yo',
+    });
+    assert(typeof api._rootLogger === 'object');
+    api._rootLogger.info('I was created with a string name');
+
+    // So we don't need to import lib-log
+    var oldLogger = api._rootLogger;
+
+    api = new subject({
+      title:        'Test Api',
+      description:  'Another test api',
+      logger:       oldLogger,
+    });
+    assert(typeof api._rootLogger === 'object');
+    api._rootLogger.info('I was created with a logger instance');
+  });
+
   test('Context properties can be required', async () => {
     // Create test api
     var api = new subject({
