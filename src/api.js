@@ -163,6 +163,9 @@ var schema = function(validate, options) {
         }
       }
       // If JSON was valid or validation was skipped then reply with 200 OK
+      if (res.headersSent) {
+        throw new Error('Multiple responses from same request');
+      }
       res.status(200).json(json);
     };
 
