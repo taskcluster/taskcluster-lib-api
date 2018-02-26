@@ -790,7 +790,6 @@ API.prototype.declare = function(options, handler) {
     throw new Error('This function has already been declared');
   }
 };
-};
 
 /**
  * Construct a router that can be mounted on an express application
