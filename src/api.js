@@ -782,6 +782,14 @@ API.prototype.declare = function(options, handler) {
     options.output = this._options.schemaPrefix + options.output;
   }
   this._entries.push(options);
+  var valueArr = options.map((item) => {return item.name});
+  var isDuplicate = valueArr.some(function(item , idx){ 
+    return valueArr.indexOf(item) != idx 
+  });
+  if (isDuplicate) {
+    throw new Error('This function has already been declared');
+  }
+};
 };
 
 /**
