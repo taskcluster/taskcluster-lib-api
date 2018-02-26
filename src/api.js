@@ -783,8 +783,8 @@ API.prototype.declare = function(options, handler) {
   }
   this._entries.push(options);
   var valueArr = options.map((item) => {return item.name});
-  var isDuplicate = valueArr.some(function(item , idx){ 
-    return valueArr.indexOf(item) != idx 
+  var isDuplicate = valueArr.some(function(item, idx) { 
+    return valueArr.indexOf(item) != idx; 
   });
   if (isDuplicate) {
     throw new Error('This function has already been declared');
