@@ -810,7 +810,7 @@ API.prototype.router = function(options) {
   options = _.defaults({}, options, {
     inputLimit:           '10mb',
     allowedCORSOrigin:    '*',
-    context:              {},
+    context:              this._options.context,
     nonceManager:         nonceManager(),
     signatureValidator:   createRemoteSignatureValidator({
       authBaseUrl:        options.authBaseUrl || AUTH_BASE_URL,
