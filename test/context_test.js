@@ -84,7 +84,9 @@ suite('API (context)', function() {
         },
       });
     } catch (err) {
-      return; // expected error
+      if (/Missing context property: 'prop2'/.test(err)) {
+        return; //expected error
+      }
     }
     assert(false, 'Expected an error!');
   });
@@ -133,7 +135,9 @@ suite('API (context)', function() {
         },
       });
     } catch (err) {
-      return; //expected error
+      if (/Context has unexpected property: 'prop3'/.test(err)) {
+        return; //expected error
+      }
     }
     assert(false, 'Expected an error!');
   });
