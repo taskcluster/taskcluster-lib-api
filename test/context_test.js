@@ -111,4 +111,30 @@ suite('API (context)', function() {
       },
     });
   });
+
+  test('Context entry should be known', async () => {
+    //Create test api
+    var api = new subject({
+      title:        'Test Api',
+      description:  'Another test api',
+      context:      ['prop1', 'prop2'],
+    });
+
+    var value = slugid.v4();
+    let validate = await validator({
+      folder:         path.join(__dirname, 'schemas'),
+      baseUrl:        'http://localhost:4321/',
+    });
+    try {
+      api.router({
+        validator: validate,
+        context: {
+          prop3: 'value3',
+        },
+      });
+    } catch (err) {
+      return; //expected error
+    }
+    assert(false, 'Expected an error!');
+  });
 });
