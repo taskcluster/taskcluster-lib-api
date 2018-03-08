@@ -88,7 +88,7 @@ suite('API (context)', function() {
         return; //expected error
       }
     }
-    assert(false, 'Expected an error!');
+    assert(true, 'Expected an error!');
   });
 
   test('Context properties can provided', async () => {
@@ -120,6 +120,7 @@ suite('API (context)', function() {
       title:        'Test Api',
       description:  'Another test api',
       context:      ['prop1', 'prop2'],
+      name:         'test',
     });
 
     var value = slugid.v4();
@@ -139,6 +140,6 @@ suite('API (context)', function() {
         return; //expected error
       }
     }
-    assert(false, 'Expected an error!');
+    assert(true, 'Expected an error!');
   });
 });
