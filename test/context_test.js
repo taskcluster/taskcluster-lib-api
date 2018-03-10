@@ -87,8 +87,9 @@ suite('API (context)', function() {
       if (/Missing context property: 'prop2'/.test(err)) {
         return; //expected error
       }
+      return;
     }
-    assert(true, 'Expected an error!');
+    assert(false, 'Expected an error!');
   });
 
   test('Context properties can provided', async () => {
@@ -139,7 +140,8 @@ suite('API (context)', function() {
       if (/Context has unexpected property: 'prop3'/.test(err)) {
         return; //expected error
       }
+      return;
     }
-    assert(true, 'Expected an error!');
+    assert(false, 'Expected an error!');
   });
 });
