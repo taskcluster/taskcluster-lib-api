@@ -137,7 +137,7 @@ suite('API (context)', function() {
         },
       });
     } catch (err) {
-      if (/Context has unexpected property: 'prop3'/.test(err)) {
+      if (/Context has unexpected property: prop3/.test(err)) {
         return; //expected error
       }
     }
