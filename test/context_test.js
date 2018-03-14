@@ -13,6 +13,7 @@ suite('API (context)', function() {
     var api = new subject({
       title:        'Test Api',
       description:  'Another test api',
+      context:      ['myProp'],
       name:         'test',
     });
 
@@ -84,10 +85,9 @@ suite('API (context)', function() {
         },
       });
     } catch (err) {
-      if (/Missing context property: 'prop2'/.test(err)) {
+      if (/Context must have declared property: 'prop2'/.test(err)) {
         return; //expected error
       }
-      return;
     }
     assert(false, 'Expected an error!');
   });
@@ -120,7 +120,7 @@ suite('API (context)', function() {
     var api = new subject({
       title:        'Test Api',
       description:  'Another test api',
-      context:      ['prop1', 'prop2'],
+      context:      [],
       name:         'test',
     });
 
@@ -140,7 +140,6 @@ suite('API (context)', function() {
       if (/Context has unexpected property: 'prop3'/.test(err)) {
         return; //expected error
       }
-      return;
     }
     assert(false, 'Expected an error!');
   });

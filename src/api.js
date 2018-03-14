@@ -810,7 +810,7 @@ API.prototype.router = function(options) {
   options = _.defaults({}, options, {
     inputLimit:           '10mb',
     allowedCORSOrigin:    '*',
-    context:              this._options.context,
+    context:              {},
     nonceManager:         nonceManager(),
     signatureValidator:   createRemoteSignatureValidator({
       authBaseUrl:        options.authBaseUrl || AUTH_BASE_URL,
@@ -822,6 +822,11 @@ API.prototype.router = function(options) {
     assert(options.context[property] !== undefined,
       'Context must have declared property: \'' + property + '\'');
   });
+
+  Object.keys(options.context).forEach(function(property) {
+    assert(this._options.context.indexOf(property) !== -1,
+      'Context has unexpected property: \'' + property + '\'');
+  }.bind(this));
 
   // Create caching authentication strategy if possible
   if (options.clientLoader || options.credentials) {
