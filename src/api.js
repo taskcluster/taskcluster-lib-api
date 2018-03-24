@@ -782,7 +782,15 @@ API.prototype.declare = function(options, handler) {
   if (options.output && options.output !== 'blob') {
     options.output = this._options.schemaPrefix + options.output;
   }
-  this._entries.push(options);
+  var valueArr = options.name;
+  var isDuplicate = valueArr.some(function(valueArr, idx) { 
+    return this._entries.indexOf(options.name) != idx; 
+  });
+  if (isDuplicate) {
+    throw new Error('This function has already been declared');
+  } else {
+    this._entries.push(options);
+  }
 };
 
 /**
