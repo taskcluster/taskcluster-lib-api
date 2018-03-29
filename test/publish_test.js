@@ -80,7 +80,7 @@ suite('api/publish', function() {
     });
     api.declare({
       method:       'get',
-      route:        '/test4',
+      route:        '/test5',
       name:         'test',
       title:        'Test End-Point',
       description:  'Place we can call to test something',
@@ -91,7 +91,7 @@ suite('api/publish', function() {
     });
     api.declare({
       method:       'get',
-      route:        '/test3',
+      route:        '/test6',
       name:         'test',
       title:        'Test End-Point',
       description:  'Place we can call to test something',

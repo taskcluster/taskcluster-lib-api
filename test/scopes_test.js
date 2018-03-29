@@ -25,7 +25,7 @@ suite('api/route', function() {
   test('string scope works', function() {
     api.declare({
       method:       'get',
-      route:        '/test/:myparam',
+      route:        '/testString/:myparam',
       scopes:       'test:unit',
       name:         'testEP',
       title:        'Test',
@@ -37,7 +37,7 @@ suite('api/route', function() {
     assert.throws(function() {
       api.declare({
         method:       'get',
-        route:        '/test/:myparam',
+        route:        '/testArr/:myparam',
         scopes:       ['test:unit'],
         name:         'testEP',
         title:        'Test',
@@ -50,7 +50,7 @@ suite('api/route', function() {
     assert.throws(function() {
       api.declare({
         method:       'get',
-        route:        '/test/:myparam',
+        route:        '/testArrArr/:myparam',
         scopes:       [[]],
         name:         'testEP',
         title:        'Test',
@@ -62,7 +62,7 @@ suite('api/route', function() {
   test('scope expression not rejected', function() {
     api.declare({
       method:       'get',
-      route:        '/test/:myparam',
+      route:        '/testScope/:myparam',
       scopes:       {AnyOf: ['something']},
       name:         'testEP',
       title:        'Test',
@@ -73,7 +73,7 @@ suite('api/route', function() {
   test('scope expression with looping template not rejected', function() {
     api.declare({
       method:       'get',
-      route:        '/test/:myparam',
+      route:        '/testScope2/:myparam',
       scopes:       {AnyOf: [{for: 'foo', in: 'bar', each: '<foo>'}]},
       name:         'testEP',
       title:        'Test',

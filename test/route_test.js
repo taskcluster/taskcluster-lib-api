@@ -206,4 +206,25 @@ suite('api/route', function() {
       }
     });
   });
+
+  test('no duplicate route and method', function() {
+    api.declare({
+      method:       'get',
+      route:        '/test',
+      name:         'test',
+      title:        'Test',
+      description:  'Test',
+    }, function(req, res) {});
+
+    assert.throws(function() {
+      api.declare({
+        method:       'get',
+        route:        '/test',
+        name:         'testDuplicate',
+        title:        'Test',
+        description:  'Test',
+      }, function(req, res) {});
+    }, /Identical route and method/);
+  });
+
 });
