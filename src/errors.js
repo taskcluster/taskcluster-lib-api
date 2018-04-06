@@ -64,7 +64,7 @@ let BuildReportErrorMethod = (method, errorCodes, monitor, cleanPayload) => {
         }
         return value;
       }) + [
-          '\n----',
+          '\n\n---\n',
           '* method:     ' + method,
           '* errorCode:  ' + code,
           '* statusCode: ' + status,

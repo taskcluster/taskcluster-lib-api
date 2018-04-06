@@ -34,7 +34,7 @@ suite('api/errors', function() {
       assert(res.status === 400);
       let response = JSON.parse(res.response.text);
       assert(response.code === 'InputError');
-      assert(/Testing Error\n----\n/.test(response.message));
+      assert(/Testing Error\n\n---\n\n/.test(response.message));
       delete response.requestInfo['time'];
       assert(_.isEqual(response.requestInfo, {
         method: 'InputError',
@@ -74,7 +74,9 @@ suite('api/errors', function() {
           '  2,',
           '  3',
           ']',
-          '----',
+          '',
+          '---',
+          '',
           '* method:     toomanyfoos',
           '* errorCode:  TooManyFoos',
           '* statusCode: 472',
