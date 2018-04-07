@@ -1,7 +1,7 @@
 suite('api/publish', function() {
   var subject         = require('../');
   var config          = require('typed-env-config');
-  var aws             = require('aws-sdk');
+  var awsmock         = require('mock-aws-s3');
   var assert          = require('assert');
   var Promise         = require('promise');
 
@@ -10,7 +10,7 @@ suite('api/publish', function() {
   if (!cfg.aws || !cfg.referenceTestBucket) {
     console.log('Skipping \'publish\', missing config file: ' +
                 'taskcluster-base-test.conf.json');
-    this.pending = true;
+  this.skip = true;
   }
 
   // Test simple method
@@ -102,20 +102,31 @@ suite('api/publish', function() {
       res.send(200, 'Hello World');
     });
 
-    return api.publish({
-      baseUrl:              'http://localhost:23243/v1',
-      referencePrefix:      'base/test/simple-api.json',
-      referenceBucket:      cfg.referenceTestBucket,
-      aws:                  cfg.aws,
-    }).then(function() {
-      // Get the file... we don't bother checking the contents this is good
-      // enough
-      var s3 = new aws.S3(cfg.aws);
-      return s3.getObject({
-        Bucket:     cfg.referenceTestBucket,
-        Key:        'base/test/simple-api.json',
-      }).promise();
-    }).then(function(res) {
+    return api
+      .publish({
+        baseUrl: 'http://localhost:23243/v1',
+        referencePrefix: 'fake file',
+        referenceBucket: cfg.referenceTestBucket,
+        aws: cfg.aws,
+        publish: true,
+      })
+      .then(function() {
+        // Get the file... we don't bother checking the contents this is good
+        // enough
+        var s3 = new aws.S3({accessKeyId: 'fake', secretAccessKey: 'fake'});
+        // return s3.getObject({
+        //  Bucket:     cfg.referenceTestBucket,
+        //   Key:        'base/test/simple-api.json',
+        // }).promise();
+
+        awsmock.mock('S3', 'getObject', function(param, callback) {
+          // Contents: [{Bucket: 'bucket'}, {Key: 'fakekey'}],
+          callback(null, {
+            Bucket: 'bucket',
+            Key: 'fakekey',
+          });
+        });
+      }).then(function(res) {
       var reference = JSON.parse(res.Body);
       assert(reference.entries, 'Missing entries');
       assert.equal(reference.entries.length, 8);
