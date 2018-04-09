@@ -789,13 +789,10 @@ API.prototype.declare = function(options, handler) {
   if (this._entries.filter(entry => entry.route == options.route && entry.method == options.method).length > 0) {
     throw new Error('Identical route and method declaration.');
   }
-  if (this._entries.map(a => a.name).some(function(element) {
-    return element == options.name;
-  })) {
+  if (this._entries.some(entry => entry.name === options.name)) {
     throw new Error('This function has already been declared.');
-  } else {
-    this._entries.push(options);
   }
+  this._entries.push(options);
 };
 
 /**
