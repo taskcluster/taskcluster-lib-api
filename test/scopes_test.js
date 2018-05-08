@@ -10,6 +10,7 @@ suite('api/route', function() {
     title:        'Test Api',
     description:  'Another test api',
     name:         'test',
+    version:      'v1',
   });
 
   test('no scopes is OK', function() {

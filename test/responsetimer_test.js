@@ -11,6 +11,7 @@ suite('api/responsetimer', function() {
     title:        'Test Api',
     description:  'Another test api',
     name:         'test',
+    version:      'v1',
   });
 
   api.declare({

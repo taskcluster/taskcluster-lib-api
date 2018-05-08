@@ -15,6 +15,7 @@ suite('API (context)', function() {
       description:  'Another test api',
       context:      ['myProp'],
       name:         'test',
+      version:      'v1',
     });
 
     api.declare({
@@ -70,6 +71,7 @@ suite('API (context)', function() {
       description:  'Another test api',
       context:      ['prop1', 'prop2'],
       name:         'test',
+      version:      'v1',
     });
 
     var value = slugid.v4();
@@ -99,6 +101,7 @@ suite('API (context)', function() {
       description:  'Another test api',
       context:      ['prop1', 'prop2'],
       name:         'test',
+      version:      'v1',
     });
 
     var value = slugid.v4();
@@ -122,6 +125,7 @@ suite('API (context)', function() {
       description:  'Another test api',
       context:      [],
       name:         'test',
+      version:      'v1',
     });
 
     var value = slugid.v4();

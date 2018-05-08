@@ -628,32 +628,14 @@ var handle = function(handler, context, name) {
 };
 
 /**
- * Create an API builder
- *
- * options:
- * {
- *   title:         "API Title",
- *   description:   "API description in markdown",
- *   schemaPrefix:  "http://schemas..../queue/",    // Prefix for all schemas
- *   params: {                                      // Patterns for URL params
- *     param1:  /.../,                // Reg-exp pattern
- *     param2(val) { return "..." }   // Function, returns message if invalid
- *   },
- *   context:       [],               // List of required context properties
- *   errorCodes: {
- *     MyError:     400,              // Mapping from error code to HTTP status
- *   }
- * }
- *
- * The API object will only modified by declarations, when `mount` or `publish`
- * is called it'll use the currently defined entries to mount or publish the
- * API.
+ * Create an API builder; see README for syntax
  */
 var API = function(options) {
-  ['title', 'description', 'name'].forEach(function(key) {
+  ['title', 'description', 'name', 'version'].forEach(function(key) {
     assert(options[key], 'Option \'' + key + '\' must be provided');
   });
   assert(/^[a-z][a-z0-9_-]*$/.test(options.name), `api name "${options.name}" is not valid`);
+  assert(/^v[0-9]+$/.test(options.version), `api version "${options.version}" is not valid`);
   this._options = _.defaults({
     errorCodes: _.defaults({}, options.errorCodes || {}, errors.ERROR_CODES),
   }, options, {

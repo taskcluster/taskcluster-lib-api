@@ -23,6 +23,7 @@ suite('api/auth', function() {
     title:        'Test Api',
     description:  'Another test api',
     name:         'test',
+    version:      'v1',
   });
 
   // Create a mock authentication server

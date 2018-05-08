@@ -11,6 +11,7 @@ suite('api/validate', function() {
     title:        'Test Api',
     description:  'Another test api',
     name:         'test',
+    version:      'v1',
   });
 
   // Declare a method we can test input with

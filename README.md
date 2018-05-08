@@ -79,6 +79,7 @@ The available options are:
  * `name` (required) - a simple name for the service that will become part of a url
    This must match the regex `/^[a-z][a-z0-9_-]*$/`. It will be the following part of a url:
    `https://whatever.net/api/<name>/v1/endpoint`.
+ * `version` (required) - version of this API, such as `'v1'`.
  * `schemaPrefix` - the prefix for the schema definitions for this service
  * `params` - patterns for URL parameters that apply to all methods (see below)
  * `context` - a list of context entries that must be passed to `api.setup`.  Each
