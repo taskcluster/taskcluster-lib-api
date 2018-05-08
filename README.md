@@ -77,8 +77,8 @@ The available options are:
  * `title` (required) - the title of the API (the microservice name)
  * `description` (required) - a description of the service, treated as markdown
  * `name` (required) - a simple name for the service that will become part of a url
-   This must match the regex `/^[a-z][a-z0-9_-]*$/`. It will be the following part of a url:
-   `https://whatever.net/api/<name>/v1/endpoint`.
+   This must match the regex `/^[a-z][a-z0-9_-]*$/`. This must be the same as the
+   `serviceName` used elsewhere to define the service.
  * `version` (required) - version of this API, such as `'v1'`.
  * `schemaPrefix` - the prefix for the schema definitions for this service
  * `params` - patterns for URL parameters that apply to all methods (see below)
