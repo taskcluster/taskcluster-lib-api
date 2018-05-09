@@ -16,9 +16,6 @@ var typeis = require('type-is');
 var errors = require('./errors');
 var ScopeExpressionTemplate = require('./expressions');
 
-// Default baseUrl for authentication server
-var AUTH_BASE_URL = 'https://auth.taskcluster.net/v1';
-
 var ping = {
   method:   'get',
   route:    '/ping',
@@ -265,7 +262,7 @@ var nonceManager = function(options) {
  *
  * options:
  * {
- *    authBaseUrl:   'https://....' // baseUrl for authentication server
+ *    rootUrl:   ..
  * }
  *
  * The function returns takes an object:
@@ -279,9 +276,9 @@ var nonceManager = function(options) {
  * `remoteAuthentication`.
  */
 var createRemoteSignatureValidator = function(options) {
-  assert(options.authBaseUrl, 'options.authBaseUrl is required');
+  assert(options.rootUrl, 'options.rootUrl is required');
   var auth = new taskcluster.Auth({
-    baseUrl: options.authBaseUrl,
+    rootUrl: options.rootUrl,
     credentials: {}, // We do this to avoid sending auth headers to authenticateHawk
   });
   return function(data) {
@@ -790,7 +787,6 @@ API.prototype.declare = function(options, handler) {
  *   context:             {}      // Object to be provided as `this` in handlers
  *   validator:           new base.validator()      // JSON schema validator
  *   nonceManager:        function(nonce, ts, cb) { // Check for replay attack
- *   authBaseUrl:         'http://auth.example.net' // BaseUrl for auth server
  *   monitor:             await require('taskcluster-lib-monitor')({...}),
  * }
  *
@@ -808,10 +804,11 @@ API.prototype.router = function(options) {
     context:              {},
     nonceManager:         nonceManager(),
     signatureValidator:   createRemoteSignatureValidator({
-      authBaseUrl:        options.authBaseUrl || AUTH_BASE_URL,
+      rootUrl: options.rootUrl,
     }),
   });
 
+  assert(!options.authBaseUrl, 'authBaseUrl option is no longer alloewd');
   assert(options.rootUrl, 'rootUrl option is required'); // TODO: validate its form
 
   // Validate context
@@ -1059,7 +1056,6 @@ API.prototype.publish = function(options) {
  *   context:             {}      // Object to be provided as `this` in handlers
  *   validator:           new base.validator()      // JSON schema validator
  *   nonceManager:        function(nonce, ts, cb) { // Check for replay attack
- *   authBaseUrl:         'http://auth.example.net' // BaseUrl for auth server
  *   publish:             true,                     // Publish API reference
  *   baseUrl:             'https://example.com/v1'  // URL under which routes are mounted
  *   referencePrefix:     'queue/v1/api.json'       // Prefix within S3 bucket

@@ -3,6 +3,7 @@ var validate        = require('taskcluster-lib-validate');
 var assert          = require('assert');
 var path            = require('path');
 var express         = require('express');
+var urls            = require('taskcluster-lib-urls');
 
 var runningServer = null;
 
@@ -20,8 +21,7 @@ exports.setupServer = async ({api, monitor}) => {
   });
 
   let router = api.router({
-    rootUrl: 'http://localhost:4321',
-    authBaseUrl: 'http://localhost:23243',
+    rootUrl: urls.testRootUrl(),
     validator,
     monitor,
   });

@@ -385,8 +385,6 @@ to `api.setup` are:
    [taskcluster-lib-validate](https://github.com/taskcluster/taskcluster-lib-validate).
  * `signatureValidator` - a validator for Hawk signatures; this is only required for
    the Auth service, as the default signature validator consults the Auth service.
- * `authBaseUrl` - base URL for the Auth service to use for authorizing requests; defaults
-   to https://auth.taskcluster.net/v1
  * `nonceManager` - a function to check for replay attacks (seldom used)
  * `baseUrl` -  URL under which routes are mounted; generally something like `publicUrl + "/v1"`
  * `publish` - if true, publish the API metadata where documentation and client libraries
@@ -431,7 +429,6 @@ let load = loader({
     setup: ({cfg, monitor, validator}) => api.setup({
       rootUrl:          cfg.taskcluster.rootUrl,
       context:          {..},
-      authBaseUrl:      cfg.taskcluster.authBaseUrl,
       publish:          process.env.NODE_ENV === 'production',
       baseUrl:          cfg.server.publicUrl + '/v1',
       referencePrefix:  'myservice/v1/api.json',

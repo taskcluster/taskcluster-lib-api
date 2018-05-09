@@ -4,6 +4,7 @@ suite('api/publish', function() {
   var aws             = require('aws-sdk');
   var assert          = require('assert');
   var Promise         = require('promise');
+  var urls            = require('taskcluster-lib-urls');
 
   var cfg = config({});
 
@@ -20,6 +21,7 @@ suite('api/publish', function() {
       title:        'Test Api',
       description:  'Another test api',
       name:         'test',
+      version:      'v1',
     });
 
     // Declare a simple method
@@ -103,7 +105,7 @@ suite('api/publish', function() {
     });
 
     return api.publish({
-      baseUrl:              'http://localhost:23243/v1',
+      rootUrl:              urls.testRootUrl(),
       referencePrefix:      'base/test/simple-api.json',
       referenceBucket:      cfg.referenceTestBucket,
       aws:                  cfg.aws,
