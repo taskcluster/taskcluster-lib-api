@@ -28,6 +28,7 @@ suite('api/auth', function() {
 
   // Create a mock authentication server
   setup(async () => {
+    console.log('HERE 1');
     testing.fakeauth.start({
       'test-client': ['service:magic'],
       admin: ['*'],
@@ -35,15 +36,23 @@ suite('api/auth', function() {
       param: ['service:myfolder/resource'],
       param2: ['service:myfolder/resource', 'service:myfolder/other-resource'],
     });
+    console.log('HERE 2');
 
     // Create router
-    var router = api.router({
-      rootUrl:        'http://localhost:4321',
-      validator:      await validator({
+    const validator = await validator({
         folder:         path.join(__dirname, 'schemas'),
         baseUrl:        'http://localhost:4321/',
-      }),
+      });
+    try {
+    var router = api.router({
+      rootUrl:        'http://localhost:4321',
+      validator,
     });
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+    console.log('HERE 3');
 
     // Create application
     var app = makeApp({
