@@ -784,6 +784,7 @@ API.prototype.declare = function(options, handler) {
  *
  * options:
  * {
+ *   rootUrl:             cfg.taskcluster.rootUrl,
  *   inputLimit:          '10mb'  // Max input JSON size
  *   allowedCORSOrigin:   '*'     // Allowed CORS origin, null to disable CORS
  *   context:             {}      // Object to be provided as `this` in handlers
@@ -810,6 +811,8 @@ API.prototype.router = function(options) {
       authBaseUrl:        options.authBaseUrl || AUTH_BASE_URL,
     }),
   });
+
+  assert(options.rootUrl, 'rootUrl option is required'); // TODO: validate its form
 
   // Validate context
   this._options.context.forEach(function(property) {
@@ -1050,6 +1053,7 @@ API.prototype.publish = function(options) {
  *
  * options:
  * {
+ *   rootUrl:             cfg.taskcluster.rootUrl,
  *   inputLimit:          '10mb'  // Max input JSON size
  *   allowedCORSOrigin:   '*'     // Allowed CORS origin, null to disable CORS
  *   context:             {}      // Object to be provided as `this` in handlers

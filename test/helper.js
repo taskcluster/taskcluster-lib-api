@@ -20,6 +20,7 @@ exports.setupServer = async ({api, monitor}) => {
   });
 
   let router = api.router({
+    rootUrl: 'http://localhost:4321',
     authBaseUrl: 'http://localhost:23243',
     validator,
     monitor,

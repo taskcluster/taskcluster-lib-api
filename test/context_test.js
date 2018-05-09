@@ -34,7 +34,8 @@ suite('API (context)', function() {
       baseUrl:        'http://localhost:4321/',
     });
     var router = api.router({
-      validator:  validate,
+      rootUrl: 'http://localhost:4321',
+      validator: validate,
       context: {
         myProp: value,
       },
@@ -81,6 +82,7 @@ suite('API (context)', function() {
     });
     try {
       api.router({
+        rootUrl: 'http://localhost:4321',
         validator:  validate,
         context: {
           prop1: 'value1',
@@ -110,6 +112,7 @@ suite('API (context)', function() {
       baseUrl:        'http://localhost:4321/',
     });
     api.router({
+      rootUrl: 'http://localhost:4321',
       validator:  validate,
       context: {
         prop1: 'value1',
@@ -135,6 +138,7 @@ suite('API (context)', function() {
     });
     try {
       api.router({
+        rootUrl: 'http://localhost:4321',
         validator: validate,
         context: {
           prop3: 'value3',

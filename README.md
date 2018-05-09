@@ -56,6 +56,7 @@ let router = api.setup({
     myDataStore:      new DataStore(),
   },
   validator:          new base.validator(),
+  rootUrl:            cfg.taskcluster.rootUrl,
 });
 
 // Add to express app
@@ -372,6 +373,8 @@ The API instance will have a `setup` method that takes additional options and
 returns a router which can be passed to an Express app's `app.use`.  The options
 to `api.setup` are:
 
+ * `rootUrl` - the root URL for this instance of Taskcluster; this is used both to call the
+   auth service to validate credentials, and to generate relevant URLs for this service.
  * `inputLimit` - maximum input size, defaulting to`"10mb"`
  * `allowedCORSOrigin` - Allowed CORS origin, or null to disable CORS; defaults to `"*"`
  * `context` - Object to be provided as `this` in handlers.  This must have exactly the properties
@@ -426,6 +429,7 @@ let load = loader({
   api: {
     requires: ['cfg', 'monitor', 'validator'],
     setup: ({cfg, monitor, validator}) => api.setup({
+      rootUrl:          cfg.taskcluster.rootUrl,
       context:          {..},
       authBaseUrl:      cfg.taskcluster.authBaseUrl,
       publish:          process.env.NODE_ENV === 'production',

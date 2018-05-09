@@ -38,6 +38,7 @@ suite('api/auth', function() {
 
     // Create router
     var router = api.router({
+      rootUrl:        'http://localhost:4321',
       validator:      await validator({
         folder:         path.join(__dirname, 'schemas'),
         baseUrl:        'http://localhost:4321/',
