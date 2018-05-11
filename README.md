@@ -430,8 +430,6 @@ let load = loader({
       rootUrl:          cfg.taskcluster.rootUrl,
       context:          {..},
       publish:          process.env.NODE_ENV === 'production',
-      baseUrl:          cfg.server.publicUrl + '/v1',
-      referencePrefix:  'myservice/v1/api.json',
       aws:              cfg.aws,
       monitor:          monitor.prefix('api'),
       validator,

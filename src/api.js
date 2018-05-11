@@ -9,6 +9,7 @@ var bodyParser = require('body-parser');
 var path = require('path');
 var fs = require('fs');
 var scopes = require('taskcluster-lib-scopes');
+var tcUrl = require('taskcluster-lib-urls');
 var crypto = require('crypto');
 var taskcluster = require('taskcluster-client');
 var Ajv = require('ajv');
@@ -628,6 +629,7 @@ var handle = function(handler, context, name) {
  * Create an API builder; see README for syntax
  */
 var API = function(options) {
+  assert(!options.schemaPrefix, 'schemaPrefix is no longer allowed!');
   ['title', 'description', 'name', 'version'].forEach(function(key) {
     assert(options[key], 'Option \'' + key + '\' must be provided');
   });
@@ -636,7 +638,6 @@ var API = function(options) {
   this._options = _.defaults({
     errorCodes: _.defaults({}, options.errorCodes || {}, errors.ERROR_CODES),
   }, options, {
-    schemaPrefix:   '',
     params:         {},
     context:        [],
     errorCodes:     {},
@@ -761,12 +762,6 @@ API.prototype.declare = function(options, handler) {
     throw new Error(`Invalid scope expression template: ${JSON.stringify(options.scopes, null, 2)}`);
   }
   options.handler = handler;
-  if (options.input) {
-    options.input = this._options.schemaPrefix + options.input;
-  }
-  if (options.output && options.output !== 'blob') {
-    options.output = this._options.schemaPrefix + options.output;
-  }
   if (this._entries.filter(entry => entry.route == options.route && entry.method == options.method).length > 0) {
     throw new Error('Identical route and method declaration.');
   }
@@ -808,7 +803,8 @@ API.prototype.router = function(options) {
     }),
   });
 
-  assert(!options.authBaseUrl, 'authBaseUrl option is no longer alloewd');
+  assert(!options.authBaseUrl, 'authBaseUrl option is no longer allowed');
+  assert(!options.baseUrl, 'baseUrl option is no longer allowed');
   assert(options.rootUrl, 'rootUrl option is required'); // TODO: validate its form
 
   // Validate context
@@ -880,6 +876,13 @@ API.prototype.router = function(options) {
   _.concat(this._entries, [ping]).forEach(entry => {
     // Route pattern
     var middleware = [entry.route];
+
+    if (entry.input) {
+      entry.input = tcUrl.schema(options.rootUrl, this._options.name, this._options.version, entry.input);
+    }
+    if (entry.output && entry.output !== 'blob') {
+      entry.output = tcUrl.schema(options.rootUrl, this._options.name, this._options.version, entry.output);
+    }
 
     if (monitor) {
       middleware.push(monitor.expressMiddleware(entry.name));
@@ -956,14 +959,16 @@ const cleanRouteAndParams = (route) => {
  * }
  */
 API.prototype.reference = function(options) {
+  const that = this;
   assert(options, '\'Options\' is required');
-  assert(options.baseUrl, 'A \'baseUrl\' must be provided');
+  assert(!options.baseUrl, 'baseUrl is deprecated!');
+  assert(options.rootUrl, 'rootUrl must be provided to api.reference!');
   var reference = {
     version:            0,
     $schema:            'http://schemas.taskcluster.net/base/v1/api-reference.json#',
     title:              this._options.title,
     description:        this._options.description,
-    baseUrl:            options.baseUrl,
+    baseUrl:            tcUrl.api(options.rootUrl, this._options.name, this._options.version, ''),
     name:               this._options.name,
     entries: _.concat(this._entries, [ping]).filter(entry => !entry.noPublish).map(function(entry) {
       const [route, params] = cleanRouteAndParams(entry.route);
@@ -982,10 +987,10 @@ API.prototype.reference = function(options) {
         retval.scopes = entry.scopes;
       }
       if (entry.input) {
-        retval.input  = entry.input;
+        retval.input = tcUrl.schema(options.rootUrl, that._options.name, that._options.version, entry.input);
       }
       if (entry.output) {
-        retval.output = entry.output;
+        retval.output = tcUrl.schema(options.rootUrl, that._options.name, that._options.version, entry.output);
       }
       return retval;
     }),
@@ -1013,7 +1018,6 @@ API.prototype.reference = function(options) {
  * options:
  * {
  *   baseUrl:         'https://example.com/v1' // URL where routes are mounted
- *   referencePrefix: 'queue/v1/api.json'      // Prefix within S3 bucket
  *   referenceBucket: 'reference.taskcluster.net',
  *   aws: {             // AWS credentials and region
  *    accessKeyId:      '...',
@@ -1029,8 +1033,9 @@ API.prototype.publish = function(options) {
   options = _.defaults({}, options, {
     referenceBucket:    'references.taskcluster.net',
   });
+  assert(!options.referencePrefix, 'referencePrefix is now deprecated!');
   // Check that required options are provided
-  ['baseUrl', 'referencePrefix', 'aws'].forEach(function(key) {
+  ['baseUrl', 'aws'].forEach(function(key) {
     assert(options[key], 'Option \'' + key + '\' must be provided');
   });
   // Create S3 object
@@ -1038,7 +1043,7 @@ API.prototype.publish = function(options) {
   // Upload object
   return s3.putObject({
     Bucket:           options.referenceBucket,
-    Key:              options.referencePrefix,
+    Key:              tcUrl.apiReference('', this._options.name, this._options.version),
     Body:             JSON.stringify(this.reference(options), undefined, 2),
     ContentType:      'application/json',
   }).promise();
@@ -1058,7 +1063,6 @@ API.prototype.publish = function(options) {
  *   nonceManager:        function(nonce, ts, cb) { // Check for replay attack
  *   publish:             true,                     // Publish API reference
  *   baseUrl:             'https://example.com/v1'  // URL under which routes are mounted
- *   referencePrefix:     'queue/v1/api.json'       // Prefix within S3 bucket
  *   referenceBucket:     'reference.taskcluster.net',
  *   aws: {               // AWS credentials and region
  *    accessKeyId:        '...',
