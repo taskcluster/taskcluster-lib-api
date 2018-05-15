@@ -878,10 +878,10 @@ API.prototype.router = function(options) {
     var middleware = [entry.route];
 
     if (entry.input) {
-      entry.input = tcUrl.schema(options.rootUrl, this._options.name, this._options.version, entry.input);
+      entry.input = tcUrl.schema(options.rootUrl, this._options.name, `${this._options.version}/${entry.input}`);
     }
     if (entry.output && entry.output !== 'blob') {
-      entry.output = tcUrl.schema(options.rootUrl, this._options.name, this._options.version, entry.output);
+      entry.output = tcUrl.schema(options.rootUrl, this._options.name, `${this._options.version}/${entry.output}`);
     }
 
     if (monitor) {
@@ -987,10 +987,10 @@ API.prototype.reference = function(options) {
         retval.scopes = entry.scopes;
       }
       if (entry.input) {
-        retval.input = tcUrl.schema(options.rootUrl, that._options.name, that._options.version, entry.input);
+        retval.input = tcUrl.schema(options.rootUrl, that._options.name, `${that._options.version}/${entry.input}`);
       }
       if (entry.output) {
-        retval.output = tcUrl.schema(options.rootUrl, that._options.name, that._options.version, entry.output);
+        retval.output = tcUrl.schema(options.rootUrl, that._options.name, `${that._options.version}/${entry.output}`);
       }
       return retval;
     }),

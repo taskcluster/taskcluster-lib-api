@@ -35,7 +35,7 @@ suite('api/auth', function() {
       nobody: ['another-irrelevant-scope'],
       param: ['service:myfolder/resource'],
       param2: ['service:myfolder/resource', 'service:myfolder/other-resource'],
-    });
+    }, {rootUrl: 'http://localhost:4321/'});
 
     // Create router
     var router = api.router({
