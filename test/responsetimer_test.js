@@ -2,19 +2,20 @@ suite('api/responsetimer', function() {
   var request         = require('superagent');
   var assert          = require('assert');
   var Promise         = require('promise');
-  var subject         = require('../');
+  var APIBuilder      = require('../');
   var monitoring      = require('taskcluster-lib-monitor');
   var helper          = require('./helper');
+  var libUrls         = require('taskcluster-lib-urls');
 
   // Create test api
-  var api = new subject({
+  var builder = new APIBuilder({
     title:        'Test Api',
     description:  'Another test api',
     name:         'test',
     version:      'v1',
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/single-param/:myparam',
     name:     'testParam',
@@ -24,7 +25,7 @@ suite('api/responsetimer', function() {
     res.status(200).send(req.params.myparam);
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/slash-param/:name(*)',
     name:     'testSlashParam',
@@ -34,7 +35,7 @@ suite('api/responsetimer', function() {
     res.status(404).send(req.params.name);
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/another-param/:name(*)',
     name:     'testAnotherParam',
@@ -57,16 +58,17 @@ suite('api/responsetimer', function() {
       mock: true,
     });
 
-    await helper.setupServer({api, monitor: monitor.prefix('api')});
+    await helper.setupServer({builder, monitor: monitor.prefix('api')});
   });
   teardown(helper.teardownServer);
 
   test('single parameter', function() {
+    const u = path => libUrls.api(helper.rootUrl, 'test', 'v1', path);
     return Promise.all([
-      request.get('http://localhost:23525/single-param/Hello'),
-      request.get('http://localhost:23525/single-param/Goodbye'),
-      request.get('http://localhost:23525/slash-param/Slash').catch(err => {}),
-      request.get('http://localhost:23525/another-param/Another').catch(err => {}),
+      request.get(u('/single-param/Hello')),
+      request.get(u('/single-param/Goodbye')),
+      request.get(u('/slash-param/Slash')).catch(err => {}),
+      request.get(u('/another-param/Another')).catch(err => {}),
     ]).then(function() {
       assert.equal(Object.keys(monitor.counts).length, 9);
       assert.equal(monitor.counts['tc-lib-api-test.api.testParam.success'], 2);

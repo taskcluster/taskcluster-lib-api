@@ -2,12 +2,13 @@ suite('api/errors', function() {
   var request         = require('superagent');
   var assert          = require('assert');
   var Promise         = require('promise');
-  var subject         = require('../');
+  var APIBuilder      = require('../');
   var helper          = require('./helper');
   var _               = require('lodash');
+  var libUrls         = require('taskcluster-lib-urls');
 
   // Create test api
-  var api = new subject({
+  var builder = new APIBuilder({
     title:        'Test Api',
     description:  'Yet another test api',
     errorCodes:   {TooManyFoos: 472},
@@ -17,11 +18,11 @@ suite('api/errors', function() {
 
   // Create a mock authentication server
   setup(async () => {
-    await helper.setupServer({api});
+    await helper.setupServer({builder});
   });
   teardown(helper.teardownServer);
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/inputerror',
     name:     'InputError',
@@ -32,9 +33,12 @@ suite('api/errors', function() {
   });
 
   test('InputError response', async function() {
-    let url = 'http://localhost:23525/inputerror';
+    let url = libUrls.api(helper.rootUrl, 'test', 'v1', '/inputerror');
     return request.get(url).then(res => assert(false, 'should have failed!')).catch(res => {
-      assert(res.status === 400);
+      if (!res.status) {
+        throw res;
+      }
+      assert.equal(res.status, 400);
       let response = JSON.parse(res.response.text);
       assert(response.code === 'InputError');
       assert(/Testing Error\n\n---\n\n/.test(response.message));
@@ -47,7 +51,7 @@ suite('api/errors', function() {
     });
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/toomanyfoos',
     name:     'toomanyfoos',
@@ -62,7 +66,7 @@ suite('api/errors', function() {
   });
 
   test('TooManyFoos response', async function() {
-    let url = 'http://localhost:23525/toomanyfoos';
+    let url = libUrls.api(helper.rootUrl, 'test', 'v1', '/toomanyfoos');
     return request.get(url).then(res => assert(false, 'should have failed!')).catch(res => {
       assert(res.status === 472);
       let response = JSON.parse(res.response.text);
@@ -95,7 +99,7 @@ suite('api/errors', function() {
     });
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/ISE',
     name:     'ISE',
@@ -106,7 +110,7 @@ suite('api/errors', function() {
   });
 
   test('ISE response', async function() {
-    let url = 'http://localhost:23525/ISE';
+    let url = libUrls.api(helper.rootUrl, 'test', 'v1', '/ISE');
     return request.get(url).then(res => assert(false, 'should have failed!')).catch(res => {
       assert(res.status === 500);
       let response = JSON.parse(res.response.text);
@@ -122,7 +126,7 @@ suite('api/errors', function() {
     });
   });
 
-  api.declare({
+  builder.declare({
     method:   'post',
     route:    '/inputvalidationerror',
     name:     'InputValidationError',
@@ -137,7 +141,7 @@ suite('api/errors', function() {
   });
 
   test('InputValidationError response', async function() {
-    let url = 'http://localhost:23525/inputvalidationerror';
+    let url = libUrls.api(helper.rootUrl, 'test', 'v1', '/inputvalidationerror');
     return request.post(url).send({invalid: 'yep', secret: 's3kr!t'})
       .then(res => assert(false, 'should have failed!'))
       .catch(res => {

@@ -9,10 +9,10 @@ checking, and generation of client libraries.
 ## Quick example
 
 ```js
-let API = require('taskcluster-lib-api');
+let APIBuilder = require('taskcluster-lib-api');
 
-// First declare an API
-let api = new API({
+// First declare API Builder
+let builder = new APIBuilder({
   // Title and description for docs
   title: 'My API',
   name: 'my-api', // Must match /^[a-z][a-z0-9_-]*$/
@@ -29,13 +29,13 @@ let api = new API({
   // Prefix for all schema referenced
   schemaPrefix: 'http://myschema-site.com/folder/',
 
-  // List of properties required as context in api.router(...)
+  // List of properties required as context when building the API,
   // provided as `this` context to handlers
   context: ['myDataStore']
 });
 
 // Now declare an API method
-api.declare({
+builder.declare({
   method: 'get',
   route:  '/:userId',
   name:   'getUser',
@@ -48,28 +48,35 @@ api.declare({
     data: "in compliance with schema",
   });
 });
+```
 
+then, during application startup:
 
-// Now create an express router
-let router = api.setup({
+```javascript
+let api = builder.build({
+  rootUrl:            cfg.taskcluster.rootUrl,
   context: {
     myDataStore:      new DataStore(),
   },
-  validator:          new base.validator(),
-  rootUrl:            cfg.taskcluster.rootUrl,
+  validator,
+  monitor,
+  // ...
 });
 
-// Add to express app
-app.use(router);
+// pass it to taskcluster-lib-app
+App({
+  apis: [api],
+  // ...
+});
 ```
 
 ## Declaring APIs
 
-To declare an API, create a new `API` object:
+To declare an API, create a new `APIBuilder` object:
 
 ```js
-const API = require('taskcluster-lib-api');
-let api = new API({
+const APIBuilder = require('taskcluster-lib-api');
+let builder = new APIBuilder({
   // ..options..
 });
 ```
@@ -81,16 +88,15 @@ The available options are:
    This must match the regex `/^[a-z][a-z0-9_-]*$/`. This must be the same as the
    `serviceName` used elsewhere to define the service.
  * `version` (required) - version of this API, such as `'v1'`.
- * `schemaPrefix` - the prefix for the schema definitions for this service
  * `params` - patterns for URL parameters that apply to all methods (see below)
- * `context` - a list of context entries that must be passed to `api.setup`.  Each
+ * `context` - a list of context entries that must be passed to `builder.build`.  Each
    will be available as properties of `this` within the implementation of each API
    method.
  * `errorCodes` - a mapping from error names to HTTP statuses, e.g., `{MyError: 400}`
 
 ## Declaring methods
 
-To declare an API method, call `api.declare(options, handler)` with the following options.
+To declare an API method, call `builder.declare(options, handler)` with the following options.
 
  * `name` (required) - identifier with which the method can be called from client
    libraries (camelCase)
@@ -367,11 +373,12 @@ reproduce its contents within the error message.
 anti-pattern.  While you may see older code that still follows this pattern, do
 not repeat it!
 
-## API Server Setup
+## Building an API
 
-The API instance will have a `setup` method that takes additional options and
-returns a router which can be passed to an Express app's `app.use`.  The options
-to `api.setup` are:
+The `APIBuilder` instance will have an async `build` method that takes additional options and
+returns an API instance which can be passed to
+[taskcluster-lib-app](https://github.com/taskcluster/taskcluster-lib-app).  The
+options to `builder.build` are:
 
  * `rootUrl` - the root URL for this instance of Taskcluster; this is used both to call the
    auth service to validate credentials, and to generate relevant URLs for this service.
@@ -397,36 +404,23 @@ to `api.setup` are:
    has the form `{accessKeyId: .., secretAccessKey: .., region: ..}`.
  * `monitor` - an instance of [taskcluster-lib-monitor](https://github.com/taskcluster/taskcluster-lib-monitor)
 
-The result is an `express.Router` instance.
+The resulting object has a `references()` method that will return the API
+reference data structure, and an `express(app)` method that configures the API
+on the given express app.
 
 For most TaskCluster services, the startup process uses
 [taskcluster-lib-loader](https://github.com/taskcluster/taskcluster-lib-loader),
 and the relevant loader components are defined like this:
 
 ```js
+const builder = require('./api');
+const App = require('taskcluster-lib-app');
+
 let load = loader({
   // ...
-  monitor: {
-    requires: ['process', 'profile', 'cfg'],
-    setup: ({process, profile, cfg}) => monitor({
-      project: cfg.app.name,
-      credentials: cfg.taskcluster.credentials,
-      mock: profile === 'test',
-      process,
-    }),
-  },
-
-  validator: {
-    requires: ['cfg'],
-    setup: ({cfg}) => validator({
-      prefix: 'myservice/v1/',
-      aws: cfg.aws,
-    }),
-  },
-
   api: {
     requires: ['cfg', 'monitor', 'validator'],
-    setup: ({cfg, monitor, validator}) => api.setup({
+    setup: ({cfg, monitor, validator}) => builder.build({
       rootUrl:          cfg.taskcluster.rootUrl,
       context:          {..},
       publish:          process.env.NODE_ENV === 'production',
@@ -438,24 +432,12 @@ let load = loader({
 
   server: {
     requires: ['cfg', 'api'],
-    setup: ({cfg, api}) => {
-      debug('Launching server.');
-      let app = App(cfg.server);
-      app.use('/v1', api);
-      return app.createServer();
-    },
+    setup: ({cfg, api}) => App({
+      // ...
+      apis: [api],
+    }),
   },
 }, ['profile', 'process']);
-
-if (!module.parent) {
-  load(process.argv[2], {
-    process: process.argv[2],
-    profile: process.env.NODE_ENV,
-  }).catch(err => {
-    console.log(err.stack);
-    process.exit(1);
-  });
-}
 ```
 
 Consult the source of some of the existing TaskCluster services direcly for

@@ -2,12 +2,15 @@ suite('api/route', function() {
   var request         = require('superagent');
   var assert          = require('assert');
   var Promise         = require('promise');
-  var subject         = require('../');
+  var APIBuilder      = require('../');
   var slugid          = require('slugid');
   var helper          = require('./helper');
+  var libUrls         = require('taskcluster-lib-urls');
+
+  const u = path => libUrls.api(helper.rootUrl, 'test', 'v1', path);
 
   // Create test api
-  var api = new subject({
+  var builder = new APIBuilder({
     title:        'Test Api',
     description:  'Another test api',
     name:         'test',
@@ -17,7 +20,7 @@ suite('api/route', function() {
     },
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/single-param/:myparam',
     name:     'testParam',
@@ -27,7 +30,7 @@ suite('api/route', function() {
     res.status(200).send(req.params.myparam);
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/query-param/',
     query: {
@@ -40,7 +43,7 @@ suite('api/route', function() {
     res.status(200).send(req.query.nextPage || 'empty');
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/slash-param/:name(*)',
     name:     'testSlashParam',
@@ -50,7 +53,7 @@ suite('api/route', function() {
     res.status(200).send(req.params.name);
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/validated-param/:taskId',
     name:     'testParamValidation',
@@ -60,7 +63,7 @@ suite('api/route', function() {
     res.status(200).send(req.params.taskId);
   });
 
-  api.declare({
+  builder.declare({
     method:   'get',
     route:    '/validated-param-2/:param2',
     name:     'testParam2Validation',
@@ -79,12 +82,12 @@ suite('api/route', function() {
 
   // Create a mock authentication server
   setup(async () => {
-    await helper.setupServer({api});
+    await helper.setupServer({builder});
   });
   teardown(helper.teardownServer);
 
   test('single parameter', function() {
-    var url = 'http://localhost:23525/single-param/Hello';
+    var url = u('/single-param/Hello');
     return request
       .get(url)
       .then(function(res) {
@@ -94,7 +97,7 @@ suite('api/route', function() {
   });
 
   test('query parameter', function() {
-    var url = 'http://localhost:23525/query-param/';
+    var url = u('/query-param/');
     return request
       .get(url)
       .query({nextPage: '352'})
@@ -105,7 +108,7 @@ suite('api/route', function() {
   });
 
   test('query parameter (is optional)', function() {
-    var url = 'http://localhost:23525/query-param/';
+    var url = u('/query-param/');
     return request
       .get(url)
       .then(function(res) {
@@ -115,7 +118,7 @@ suite('api/route', function() {
   });
 
   test('query parameter (validation works)', function() {
-    var url = 'http://localhost:23525/query-param/';
+    var url = u('/query-param/');
     return request
       .get(url)
       .query({nextPage: 'abc'})
@@ -127,7 +130,7 @@ suite('api/route', function() {
   });
 
   test('slash parameter', function() {
-    var url = 'http://localhost:23525/slash-param/Hello/World';
+    var url = u('/slash-param/Hello/World');
     return request
       .get(url)
       .then(function(res) {
@@ -138,7 +141,7 @@ suite('api/route', function() {
 
   test('validated reg-exp parameter (valid)', function() {
     var id = slugid.v4();
-    var url = 'http://localhost:23525/validated-param/' + id;
+    var url = u('/validated-param/') + id;
     return request
       .get(url)
       .then(function(res) {
@@ -148,7 +151,7 @@ suite('api/route', function() {
   });
 
   test('validated reg-exp parameter (invalid)', function() {
-    var url = 'http://localhost:23525/validated-param/-';
+    var url = u('/validated-param/-');
     return request
       .get(url)
       .then(res => assert(false, 'should have failed!'))
@@ -159,7 +162,7 @@ suite('api/route', function() {
   });
 
   test('validated function parameter (valid)', function() {
-    var url = 'http://localhost:23525/validated-param-2/correct';
+    var url = u('/validated-param-2/correct');
     return request
       .get(url)
       .then(function(res) {
@@ -169,7 +172,7 @@ suite('api/route', function() {
   });
 
   test('validated function parameter (invalid)', function() {
-    var url = 'http://localhost:23525/validated-param-2/incorrect';
+    var url = u('/validated-param-2/incorrect');
     return request
       .get(url)
       .then(res => assert(false, 'should have failed!'))
@@ -180,7 +183,7 @@ suite('api/route', function() {
   });
 
   test('cache header', function() {
-    var url = 'http://localhost:23525/single-param/Hello';
+    var url = u('/single-param/Hello');
     return request
       .get(url)
       .then(function(res) {
@@ -190,7 +193,7 @@ suite('api/route', function() {
   });
 
   test('cache header on 404s', function() {
-    var url = 'http://localhost:23525/unknown';
+    var url = u('/unknown');
     return request
       .get(url)
       .then(res => assert(false, 'should have failed!'))
@@ -200,8 +203,8 @@ suite('api/route', function() {
   });
 
   test('reference', async function() {
-    const svc = await api.setup({rootUrl: 'http://localhost:23242'});
-    const ref = svc.reference();
+    const api = await builder.build({rootUrl: 'http://localhost:23242'});
+    const ref = api.reference();
     ref.entries.forEach(function(entry) {
       if (entry.name == 'testSlashParam') {
         assert(entry.route === '/slash-param/<name>',
@@ -213,7 +216,7 @@ suite('api/route', function() {
   });
 
   test('no duplicate route and method', function() {
-    api.declare({
+    builder.declare({
       method:       'get',
       route:        '/test',
       name:         'test',
@@ -222,7 +225,7 @@ suite('api/route', function() {
     }, function(req, res) {});
 
     assert.throws(function() {
-      api.declare({
+      builder.declare({
         method:       'get',
         route:        '/test',
         name:         'testDuplicate',

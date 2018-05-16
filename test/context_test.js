@@ -1,7 +1,7 @@
 suite('API (context)', function() {
   var validator       = require('taskcluster-lib-validate');
   var makeApp         = require('taskcluster-lib-app');
-  var subject         = require('../');
+  var APIBuilder      = require('../');
   var assert          = require('assert');
   var Promise         = require('promise');
   var request         = require('superagent');
@@ -11,7 +11,7 @@ suite('API (context)', function() {
   const rootUrl = 'http://localhost:4321';
   test('Provides context', async () => {
     // Create test api
-    var api = new subject({
+    var builder = new APIBuilder({
       title:        'Test Api',
       description:  'Another test api',
       context:      ['myProp'],
@@ -19,7 +19,7 @@ suite('API (context)', function() {
       version:      'v1',
     });
 
-    api.declare({
+    builder.declare({
       method:   'get',
       route:    '/context/',
       name:     'getContext',
@@ -35,14 +35,13 @@ suite('API (context)', function() {
       serviceName: 'test',
       folder: path.join(__dirname, 'schemas'),
     });
-    const svc = await api.setup({
+    const api = await builder.build({
       rootUrl,
       validator: validate,
       context: {
         myProp: value,
       },
     });
-    const router = svc.router();
 
     var app = makeApp({
       port:       60872,
@@ -50,13 +49,12 @@ suite('API (context)', function() {
       forceSSL:   false,
       trustProxy: false,
     });
-
-    app.use('/v1', router);
+    api.express(app);
 
     let server = await app.createServer();
 
     await request
-      .get('http://localhost:60872/v1/context')
+      .get('http://localhost:60872/api/test/v1/context')
       .then(function(res) {
         assert(res.body.myProp === value);
       }).then(function() {
@@ -70,7 +68,7 @@ suite('API (context)', function() {
 
   test('Context properties can be required', async () => {
     // Create test api
-    var api = new subject({
+    var builder = new APIBuilder({
       title:        'Test Api',
       description:  'Another test api',
       context:      ['prop1', 'prop2'],
@@ -85,7 +83,7 @@ suite('API (context)', function() {
       folder: path.join(__dirname, 'schemas'),
     });
     try {
-      await api.setup({
+      await builder.build({
         rootUrl,
         validator:  validate,
         context: {
@@ -103,7 +101,7 @@ suite('API (context)', function() {
 
   test('Context properties can provided', async () => {
     // Create test api
-    var api = new subject({
+    var builder = new APIBuilder({
       title:        'Test Api',
       description:  'Another test api',
       context:      ['prop1', 'prop2'],
@@ -117,7 +115,7 @@ suite('API (context)', function() {
       serviceName: 'test',
       folder: path.join(__dirname, 'schemas'),
     });
-    await api.setup({
+    await builder.build({
       rootUrl,
       validator:  validate,
       context: {
@@ -129,7 +127,7 @@ suite('API (context)', function() {
 
   test('Context entry should be known', async () => {
     //Create test api
-    var api = new subject({
+    var builder = new APIBuilder({
       title:        'Test Api',
       description:  'Another test api',
       context:      [],
@@ -144,7 +142,7 @@ suite('API (context)', function() {
       folder: path.join(__dirname, 'schemas'),
     });
     try {
-      await api.setup({
+      await builder.build({
         rootUrl,
         validator: validate,
         context: {

@@ -5,7 +5,7 @@ suite('api/auth', function() {
   var Promise         = require('promise');
   var validator       = require('taskcluster-lib-validate');
   var makeApp         = require('taskcluster-lib-app');
-  var subject         = require('../');
+  var APIBuilder      = require('../');
   var express         = require('express');
   var hawk            = require('hawk');
   var slugid          = require('slugid');
@@ -20,7 +20,7 @@ suite('api/auth', function() {
   this.timeout(500);
 
   // Create test api
-  var api = new subject({
+  var builder = new APIBuilder({
     title:        'Test Api',
     description:  'Another test api',
     name:         'test',
@@ -38,8 +38,8 @@ suite('api/auth', function() {
       param2: ['service:myfolder/resource', 'service:myfolder/other-resource'],
     }, {rootUrl});
 
-    // Create router
-    const svc = await api.setup({
+    // Create API
+    const api = await builder.build({
       rootUrl,
       validator: await validator({
         serviceName: 'test',
@@ -47,7 +47,6 @@ suite('api/auth', function() {
         folder: path.join(__dirname, 'schemas'),
       }),
     });
-    const router = svc.router();
 
     // Create application
     var app = makeApp({
@@ -56,9 +55,7 @@ suite('api/auth', function() {
       forceSSL:   false,
       trustProxy: false,
     });
-
-    // Use router
-    app.use(router);
+    api.express(app);
 
     _apiServer = await app.createServer();
   });
@@ -71,7 +68,7 @@ suite('api/auth', function() {
 
   const testEndpoint = ({method, route, name, scopes = null, handler, handlerBuilder, tests}) => {
     let sideEffects = {};
-    api.declare({
+    builder.declare({
       method,
       route,
       name,
@@ -87,7 +84,7 @@ suite('api/auth', function() {
         }
         return result;
       });
-      return `http://localhost:23526${path}`;
+      return `http://localhost:23526/api/test/v1${path}`;
     };
     const buildHawk = id => ({
       id,
@@ -105,7 +102,11 @@ suite('api/auth', function() {
           const res = await tester(auth, url, sideEffects);
           assert.equal(res.status, desiredStatus);
         } catch (err) {
-          assert.equal(err.status, desiredStatus);
+          if ('status' in err) {
+            assert.equal(err.status, desiredStatus);
+          } else {
+            throw err;
+          }
         }
       });
     });
