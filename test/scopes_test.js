@@ -1,10 +1,7 @@
-suite('api/route', function() {
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var APIBuilder      = require('../');
-  var express         = require('express');
-  var path            = require('path');
+const assert          = require('assert');
+const APIBuilder      = require('../');
 
+suite('api/route', function() {
   // Create test api
   var builder = new APIBuilder({
     title:        'Test Api',

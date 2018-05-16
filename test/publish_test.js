@@ -1,11 +1,10 @@
-suite('api/publish', function() {
-  var APIBuilder      = require('../');
-  var config          = require('typed-env-config');
-  var aws             = require('aws-sdk');
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var urls            = require('taskcluster-lib-urls');
+const APIBuilder      = require('../');
+const config          = require('typed-env-config');
+const aws             = require('aws-sdk');
+const assert          = require('assert');
+const libUrls            = require('taskcluster-lib-libUrls');
 
+suite('api/publish', function() {
   var cfg = config({});
 
   if (!cfg.aws || !cfg.referenceTestBucket) {
@@ -105,7 +104,7 @@ suite('api/publish', function() {
     });
 
     const api = await builder.build({
-      rootUrl:              urls.testRootUrl(),
+      rootUrl:              libUrls.testRootUrl(),
       referenceBucket:      cfg.referenceTestBucket,
       aws:                  cfg.aws,
     });

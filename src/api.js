@@ -10,7 +10,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
 const scopes = require('taskcluster-lib-scopes');
-const tcUrl = require('taskcluster-lib-urls');
+const libUrls = require('taskcluster-lib-urls');
 const crypto = require('crypto');
 const taskcluster = require('taskcluster-client');
 const Ajv = require('ajv');
@@ -108,11 +108,11 @@ class API {
       // fully-qualify schema references
       if (entry.input) {
         assert(!entry.input.startsWith('http'), 'entry.input should be a filename, not a url');
-        entry.input = tcUrl.schema(options.rootUrl, this.builder.name, `${this.builder.version}/${entry.input}`);
+        entry.input = libUrls.schema(options.rootUrl, this.builder.name, `${this.builder.version}/${entry.input}`);
       }
       if (entry.output && entry.output !== 'blob') {
         assert(!entry.output.startsWith('http'), 'entry.output should be a filename, not a url');
-        entry.output = tcUrl.schema(options.rootUrl, this.builder.name, `${this.builder.version}/${entry.output}`);
+        entry.output = libUrls.schema(options.rootUrl, this.builder.name, `${this.builder.version}/${entry.output}`);
       }
       return entry;
     });
@@ -130,7 +130,7 @@ class API {
       $schema:            'http://schemas.taskcluster.net/base/v1/api-reference.json#',
       title:              builder.title,
       description:        builder.description,
-      baseUrl:            tcUrl.api(this.options.rootUrl, builder.name, builder.version, ''),
+      baseUrl:            libUrls.api(this.options.rootUrl, builder.name, builder.version, ''),
       name:               builder.name,
       entries: this.entries.filter(entry => !entry.noPublish).map(entry => {
         const [route, params] = _cleanRouteAndParams(entry.route);
@@ -186,7 +186,7 @@ class API {
     // Upload object
     await s3.putObject({
       Bucket:           this.options.referenceBucket,
-      Key:              tcUrl.apiReference('', this.builder.name, this.builder.version),
+      Key:              libUrls.apiReference('', this.builder.name, this.builder.version),
       Body:             JSON.stringify(this.reference(), undefined, 2),
       ContentType:      'application/json',
     }).promise();
@@ -298,7 +298,7 @@ class API {
 
   express(app) {
     // generate the appropriate path for this service, based on the rootUrl
-    const path = url.parse(tcUrl.api(this.options.rootUrl, this.builder.name, this.builder.version, '')).path;
+    const path = url.parse(libUrls.api(this.options.rootUrl, this.builder.name, this.builder.version, '')).path;
     app.use(path, this.router());
   }
 }
@@ -877,6 +877,7 @@ var handle = function(handler, context) {
       } else if (err.code === 'AuthenticationError') {
         return res.reportError('AuthenticationFailed', err.message, err.details);
       }
+      //console.log(err);
       return res.reportInternalError(err);
     });
   };

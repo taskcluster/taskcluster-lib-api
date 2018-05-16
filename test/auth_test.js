@@ -1,19 +1,14 @@
-suite('api/auth', function() {
-  var _               = require('lodash');
-  var request         = require('superagent-hawk')(require('superagent'));
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var validator       = require('taskcluster-lib-validate');
-  var makeApp         = require('taskcluster-lib-app');
-  var APIBuilder      = require('../');
-  var express         = require('express');
-  var hawk            = require('hawk');
-  var slugid          = require('slugid');
-  var crypto          = require('crypto');
-  var testing         = require('taskcluster-lib-testing');
-  var path            = require('path');
-  var urls            = require('taskcluster-lib-urls');
+const _               = require('lodash');
+const request         = require('superagent-hawk')(require('superagent'));
+const assert          = require('assert');
+const Promise         = require('promise');
+const validator       = require('taskcluster-lib-validate');
+const makeApp         = require('taskcluster-lib-app');
+const APIBuilder      = require('../');
+const testing         = require('taskcluster-lib-testing');
+const path            = require('path');
 
+suite('api/auth', function() {
   // Reference for test api server
   var _apiServer = null;
 

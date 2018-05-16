@@ -1,12 +1,10 @@
-suite('api/validate', function() {
-  var request         = require('superagent');
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var APIBuilder      = require('../');
-  var helper          = require('./helper');
-  var testing         = require('taskcluster-lib-testing');
-  var libUrls         = require('taskcluster-lib-urls');
+const request         = require('superagent');
+const assert          = require('assert');
+const APIBuilder      = require('../');
+const helper          = require('./helper');
+const libUrls         = require('taskcluster-lib-urls');
 
+suite('api/validate', function() {
   const u = path => libUrls.api(helper.rootUrl, 'test', 'v1', path);
 
   // Create test api

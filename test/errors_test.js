@@ -1,12 +1,11 @@
-suite('api/errors', function() {
-  var request         = require('superagent');
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var APIBuilder      = require('../');
-  var helper          = require('./helper');
-  var _               = require('lodash');
-  var libUrls         = require('taskcluster-lib-urls');
+const request         = require('superagent');
+const assert          = require('assert');
+const APIBuilder      = require('../');
+const helper          = require('./helper');
+const _               = require('lodash');
+const libUrls         = require('taskcluster-lib-urls');
 
+suite('api/errors', function() {
   // Create test api
   var builder = new APIBuilder({
     title:        'Test Api',

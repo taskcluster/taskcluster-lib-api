@@ -1,12 +1,11 @@
-suite('api/route', function() {
-  var request         = require('superagent');
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var APIBuilder      = require('../');
-  var slugid          = require('slugid');
-  var helper          = require('./helper');
-  var libUrls         = require('taskcluster-lib-urls');
+const request         = require('superagent');
+const assert          = require('assert');
+const APIBuilder      = require('../');
+const slugid          = require('slugid');
+const helper          = require('./helper');
+const libUrls         = require('taskcluster-lib-urls');
 
+suite('api/route', function() {
   const u = path => libUrls.api(helper.rootUrl, 'test', 'v1', path);
 
   // Create test api

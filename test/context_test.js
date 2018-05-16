@@ -1,13 +1,12 @@
-suite('API (context)', function() {
-  var validator       = require('taskcluster-lib-validate');
-  var makeApp         = require('taskcluster-lib-app');
-  var APIBuilder      = require('../');
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var request         = require('superagent');
-  var slugid          = require('slugid');
-  var path            = require('path');
+const validator       = require('taskcluster-lib-validate');
+const App             = require('taskcluster-lib-app');
+const APIBuilder      = require('../');
+const assert          = require('assert');
+const request         = require('superagent');
+const slugid          = require('slugid');
+const path            = require('path');
 
+suite('API (context)', function() {
   const rootUrl = 'http://localhost:4321';
   test('Provides context', async () => {
     // Create test api
@@ -43,7 +42,7 @@ suite('API (context)', function() {
       },
     });
 
-    var app = makeApp({
+    var app = App({
       port:       60872,
       env:        'development',
       forceSSL:   false,

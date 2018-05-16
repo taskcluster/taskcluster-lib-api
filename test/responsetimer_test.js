@@ -1,12 +1,12 @@
-suite('api/responsetimer', function() {
-  var request         = require('superagent');
-  var assert          = require('assert');
-  var Promise         = require('promise');
-  var APIBuilder      = require('../');
-  var monitoring      = require('taskcluster-lib-monitor');
-  var helper          = require('./helper');
-  var libUrls         = require('taskcluster-lib-urls');
+const request         = require('superagent');
+const assert          = require('assert');
+const Promise         = require('promise');
+const APIBuilder      = require('../');
+const monitoring      = require('taskcluster-lib-monitor');
+const helper          = require('./helper');
+const libUrls         = require('taskcluster-lib-urls');
 
+suite('api/responsetimer', function() {
   // Create test api
   var builder = new APIBuilder({
     title:        'Test Api',
