@@ -72,7 +72,7 @@ class API {
   constructor(options) {
     assert(!options.authBaseUrl, 'authBaseUrl option is no longer allowed');
     assert(!options.baseUrl, 'baseUrl option is no longer allowed');
-    assert(options.api, 'api option is required');
+    assert(options.builder, 'builder option is required');
     assert(options.rootUrl, 'rootUrl option is required');
     assert(!options.referencePrefix, 'referencePrefix is now deprecated!');
 
@@ -85,32 +85,34 @@ class API {
       signatureValidator:   createRemoteSignatureValidator({
         rootUrl: options.rootUrl,
       }),
+      name: options.builder.name,
+      version: options.builder.version,
     });
-    this.api = options.api;
+    this.builder = options.builder;
 
     // validate context
-    this.api.context.forEach(function(property) {
+    this.builder.context.forEach(function(property) {
       assert(options.context[property] !== undefined,
         'Context must have declared property: \'' + property + '\'');
     });
 
     Object.keys(options.context).forEach(property => {
-      assert(this.api.context.indexOf(property) !== -1,
+      assert(this.builder.context.indexOf(property) !== -1,
         `Context has unexpected property: ${property}`);
     });
 
     // make `entries` specific to this rootUrl
-    this.entries = options.api.entries.map((entry) => {
+    this.entries = this.builder.entries.map((entry) => {
       entry = _.clone(entry);
 
       // fully-qualify schema references
       if (entry.input) {
         assert(!entry.input.startsWith('http'), 'entry.input should be a filename, not a url');
-        entry.input = tcUrl.schema(options.rootUrl, this.api.name, `${this.api.version}/${entry.input}`);
+        entry.input = tcUrl.schema(options.rootUrl, this.builder.name, `${this.builder.version}/${entry.input}`);
       }
       if (entry.output && entry.output !== 'blob') {
         assert(!entry.output.startsWith('http'), 'entry.output should be a filename, not a url');
-        entry.output = tcUrl.schema(options.rootUrl, this.api.name, `${this.api.version}/${entry.output}`);
+        entry.output = tcUrl.schema(options.rootUrl, this.builder.name, `${this.builder.version}/${entry.output}`);
       }
       return entry;
     });
@@ -122,14 +124,14 @@ class API {
    * Construct the API reference document as a JSON value.
    */
   reference() {
-    const {api} = this;
+    const {builder} = this;
     var reference = {
       version:            0,
       $schema:            'http://schemas.taskcluster.net/base/v1/api-reference.json#',
-      title:              api.title,
-      description:        api.description,
-      baseUrl:            tcUrl.api(this.options.rootUrl, api.name, api.version, ''),
-      name:               api.name,
+      title:              builder.title,
+      description:        builder.description,
+      baseUrl:            tcUrl.api(this.options.rootUrl, builder.name, builder.version, ''),
+      name:               builder.name,
       entries: _.concat(this.entries, [ping]).filter(entry => !entry.noPublish).map(entry => {
         const [route, params] = _cleanRouteAndParams(entry.route);
         var retval = {
@@ -184,7 +186,7 @@ class API {
     // Upload object
     await s3.putObject({
       Bucket:           this.options.referenceBucket,
-      Key:              tcUrl.apiReference('', this.api.name, this.api.version),
+      Key:              tcUrl.apiReference('', this.builder.name, this.builder.version),
       Body:             JSON.stringify(this.reference(), undefined, 2),
       ContentType:      'application/json',
     }).promise();
@@ -195,7 +197,7 @@ class API {
     */
   router() {
     let {
-      api,
+      builder,
       monitor,
       allowedCORSOrigin,
       rootUrl,
@@ -252,7 +254,7 @@ class API {
       // Add authentication, schema validation and handler
       middleware.push(
         errors.BuildReportErrorMethod(
-          entry.name, api.errorCodes, monitor,
+          entry.name, builder.errorCodes, monitor,
           entry.cleanPayload
         ),
         bodyParser.text({
@@ -296,7 +298,7 @@ class API {
 
   express(app) {
     // generate the appropriate path for this service, based on the rootUrl
-    const path = url.parse(tcUrl.api(this.options.rootUrl, this.api.name, this.api.version, '')).path;
+    const path = url.parse(tcUrl.api(this.options.rootUrl, this.builder.name, this.builder.version, '')).path;
     app.use(path, this.router());
   }
 }

@@ -200,7 +200,7 @@ APIBuilder.prototype.declare = function(options, handler) {
  * Return an `express.Router` instance.
  */
 APIBuilder.prototype.build = async function(options) {
-  options.api = this;
+  options.builder = this;
   const service = new API(options);
   if (options.publish) {
     await service.publish();
