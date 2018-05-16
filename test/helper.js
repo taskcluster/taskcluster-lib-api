@@ -8,23 +8,26 @@ var urls            = require('taskcluster-lib-urls');
 var runningServer = null;
 
 /**
- * Set up a testing server on port 23525 serving the given API.  If mointor is
+ * Set up a testing server on port 23525 serving the given API.  If monitor is
  * specified, it is added to the router.
  */
 exports.setupServer = async ({api, monitor}) => {
-  testing.fakeauth.start();
+  const rootUrl = 'http://localhost:4321';
+  testing.fakeauth.start([], {rootUrl});
   assert(runningServer === null);
 
   let validator = await validate({
+    rootUrl,
+    serviceName: 'test',
     folder: path.join(__dirname, 'schemas'),
-    baseUrl: 'http://localhost:4321/',
   });
 
-  let router = api.router({
-    rootUrl: urls.testRootUrl(),
+  const svc = await api.setup({
+    rootUrl,
     validator,
     monitor,
   });
+  const router = svc.router();
 
   // Create application
   let app = express();

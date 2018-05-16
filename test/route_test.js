@@ -78,7 +78,9 @@ suite('api/route', function() {
   });
 
   // Create a mock authentication server
-  setup(() => helper.setupServer({api}));
+  setup(async () => {
+    await helper.setupServer({api});
+  });
   teardown(helper.teardownServer);
 
   test('single parameter', function() {
@@ -197,8 +199,9 @@ suite('api/route', function() {
       });
   });
 
-  test('reference', function() {
-    var ref = api.reference({baseUrl: 'http://localhost:23243'});
+  test('reference', async function() {
+    const svc = await api.setup({rootUrl: 'http://localhost:23242'});
+    const ref = svc.reference();
     ref.entries.forEach(function(entry) {
       if (entry.name == 'testSlashParam') {
         assert(entry.route === '/slash-param/<name>',

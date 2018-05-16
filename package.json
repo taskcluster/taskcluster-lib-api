@@ -44,7 +44,7 @@
     "typed-env-config": "^1.1.1"
   },
   "engines": {
-      "node" : ">=8"
+    "node": ">=8"
   },
   "main": "./src/api.js"
 }

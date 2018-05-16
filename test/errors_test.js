@@ -16,7 +16,9 @@ suite('api/errors', function() {
   });
 
   // Create a mock authentication server
-  setup(() => helper.setupServer({api}));
+  setup(async () => {
+    await helper.setupServer({api});
+  });
   teardown(helper.teardownServer);
 
   api.declare({
@@ -125,7 +127,7 @@ suite('api/errors', function() {
     route:    '/inputvalidationerror',
     name:     'InputValidationError',
     title:    'Test End-Point',
-    input:    'http://localhost:4321/test-schema.json',
+    input:    'test-schema.json',
     description:  'Place we can call to test something',
     cleanPayload: payload => {
       payload.secret = '<HIDDEN>';

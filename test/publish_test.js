@@ -15,7 +15,7 @@ suite('api/publish', function() {
   }
 
   // Test simple method
-  test('publish minimal reference', function() {
+  test('publish minimal reference', async function() {
     // Create test api
     var api = new subject({
       title:        'Test Api',
@@ -104,24 +104,23 @@ suite('api/publish', function() {
       res.send(200, 'Hello World');
     });
 
-    return api.publish({
+    const svc = await api.setup({
       rootUrl:              urls.testRootUrl(),
-      referencePrefix:      'base/test/simple-api.json',
       referenceBucket:      cfg.referenceTestBucket,
       aws:                  cfg.aws,
-    }).then(function() {
-      // Get the file... we don't bother checking the contents this is good
-      // enough
-      var s3 = new aws.S3(cfg.aws);
-      return s3.getObject({
-        Bucket:     cfg.referenceTestBucket,
-        Key:        'base/test/simple-api.json',
-      }).promise();
-    }).then(function(res) {
-      var reference = JSON.parse(res.Body);
-      assert(reference.entries, 'Missing entries');
-      assert.equal(reference.entries.length, 8);
-      assert(reference.title, 'Missing title');
     });
+
+    await svc.publish();
+    // Get the file... we don't bother checking the contents this is good
+    // enough
+    const s3 = new aws.S3(cfg.aws);
+    const res = await s3.getObject({
+      Bucket:     cfg.referenceTestBucket,
+      Key:        'test/v1/api.json',
+    });
+    const reference = JSON.parse(res.Body);
+    assert(reference.entries, 'Missing entries');
+    assert.equal(reference.entries.length, 8);
+    assert(reference.title, 'Missing title');
   });
 });

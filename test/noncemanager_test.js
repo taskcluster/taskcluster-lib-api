@@ -1,5 +1,5 @@
 suite('nonceManager test', function() {
-  var subject         = require('../');
+  var Service         = require('../src/service');
   var assert          = require('assert');
   var Promise         = require('promise');
   var debug           = require('debug')('base:test:nonceManager');
@@ -7,7 +7,7 @@ suite('nonceManager test', function() {
   // Create a new nonceManager for each test
   var nonceManager = null;
   setup(function() {
-    nonceManager = subject.nonceManager({size: 5});
+    nonceManager = Service.nonceManager({size: 5});
   });
 
   test('accept one', function() {

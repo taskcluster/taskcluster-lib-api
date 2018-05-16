@@ -8,6 +8,7 @@ suite('API (context)', function() {
   var slugid          = require('slugid');
   var path            = require('path');
 
+  const rootUrl = 'http://localhost:4321';
   test('Provides context', async () => {
     // Create test api
     var api = new subject({
@@ -30,16 +31,18 @@ suite('API (context)', function() {
 
     var value = slugid.v4();
     let validate = await validator({
-      folder:         path.join(__dirname, 'schemas'),
-      baseUrl:        'http://localhost:4321/',
+      rootUrl,
+      serviceName: 'test',
+      folder: path.join(__dirname, 'schemas'),
     });
-    var router = api.router({
-      rootUrl: 'http://localhost:4321',
+    const svc = await api.setup({
+      rootUrl,
       validator: validate,
       context: {
         myProp: value,
       },
     });
+    const router = svc.router();
 
     var app = makeApp({
       port:       60872,
@@ -77,12 +80,13 @@ suite('API (context)', function() {
 
     var value = slugid.v4();
     let validate = await validator({
-      folder:         path.join(__dirname, 'schemas'),
-      baseUrl:        'http://localhost:4321/',
+      rootUrl,
+      serviceName: 'test',
+      folder: path.join(__dirname, 'schemas'),
     });
     try {
-      api.router({
-        rootUrl: 'http://localhost:4321',
+      await api.setup({
+        rootUrl,
         validator:  validate,
         context: {
           prop1: 'value1',
@@ -92,6 +96,7 @@ suite('API (context)', function() {
       if (/Context must have declared property: 'prop2'/.test(err)) {
         return; //expected error
       }
+      throw err;
     }
     assert(false, 'Expected an error!');
   });
@@ -108,11 +113,12 @@ suite('API (context)', function() {
 
     var value = slugid.v4();
     let validate = await validator({
-      folder:         path.join(__dirname, 'schemas'),
-      baseUrl:        'http://localhost:4321/',
+      rootUrl,
+      serviceName: 'test',
+      folder: path.join(__dirname, 'schemas'),
     });
-    api.router({
-      rootUrl: 'http://localhost:4321',
+    await api.setup({
+      rootUrl,
       validator:  validate,
       context: {
         prop1: 'value1',
@@ -133,12 +139,13 @@ suite('API (context)', function() {
 
     var value = slugid.v4();
     let validate = await validator({
-      folder:         path.join(__dirname, 'schemas'),
-      baseUrl:        'http://localhost:4321/',
+      rootUrl,
+      serviceName: 'test',
+      folder: path.join(__dirname, 'schemas'),
     });
     try {
-      api.router({
-        rootUrl: 'http://localhost:4321',
+      await api.setup({
+        rootUrl,
         validator: validate,
         context: {
           prop3: 'value3',
@@ -148,6 +155,7 @@ suite('API (context)', function() {
       if (/Context has unexpected property: prop3/.test(err)) {
         return; //expected error
       }
+      throw err;
     }
     assert(false, 'Expected an error!');
   });
