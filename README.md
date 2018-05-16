@@ -26,9 +26,6 @@ let builder = new APIBuilder({
     userId: /^[a-z0-9]+$/
   },
 
-  // Prefix for all schema referenced
-  schemaPrefix: 'http://myschema-site.com/folder/',
-
   // List of properties required as context when building the API,
   // provided as `this` context to handlers
   context: ['myDataStore']
@@ -217,11 +214,32 @@ endpoint implementation _must_ check for authorization manually as described bel
 this check does not occur, taskcluster-lib-api will throw an error for the result of the
 endpoint.
 
+### Schemas
+
+The `input` and `output` properties of an API method declration name
+JSON-schema files which the method input payload and output body must satisfy.
+The output property can also have the special property `blob` indicating that
+it is not a JSON value, but this is rarely used.
+
+The schema declarations are expected to be in
+`schemas/<api.version>/<schemafile>`, as loaded by taskcluster-lib-validate.
+For example:
+
+```js
+builder.declare({
+  // ...
+  input: 'important-stuff.yml',
+});
+```
+
+you may see names ending in `.json` or `.json#`. While still supported, such
+usage is deprecated.
+
 ### Stability Levels
 
-The API stability levels are available as properties of `API.stability`:
+The API stability levels are available as properties of `APIBuilder.stability`:
 
-*`API.stability.experimental`*
+*`APIBuilder.stability.experimental`*
 
 Unless otherwise stated, experimental interfaces may change and resources may
 be deleted without warning. Often we will, however, try to deprecate the API
@@ -240,7 +258,7 @@ Generally, this is a good stability level for anything under-development, or
 when we know that there is a limited number of consumers so fixing the world
 after breaking the API is easy.
 
-*`API.stability.stable`*
+*`APIBuilder.stability.stable`*
 
 Indicates that the API method is stable and we will not delete resources or
 break the API suddenly.  As a guideline we will always facilitate gradual
@@ -251,7 +269,7 @@ Intended Usage:
  * API end-points used in critical production.
  * APIs so widely used that refactoring would be hard.
 
-*`API.stability.deprecated`*
+*`APIBuilder.stability.deprecated`*
 
 Indicates that the API method has been marked for deprecation and should not be
 used in new clients.
@@ -388,21 +406,20 @@ options to `builder.build` are:
    specified in `context` when the API was declared.  The purpose of this parameter is to
    provide uesful application-specific objects such as Azure table objects or
    other API clients to the API methods.
+ * `monitor` - an instance of [taskcluster-lib-monitor](https://github.com/taskcluster/taskcluster-lib-monitor)
  * `validator` (required) - a schema validator; this is a Validator object from
    [taskcluster-lib-validate](https://github.com/taskcluster/taskcluster-lib-validate).
  * `signatureValidator` - a validator for Hawk signatures; this is only required for
    the Auth service, as the default signature validator consults the Auth service.
  * `nonceManager` - a function to check for replay attacks (seldom used)
- * `baseUrl` -  URL under which routes are mounted; generally something like `publicUrl + "/v1"`
+
+For publishing (only supported for the legacy URL scheme):
  * `publish` - if true, publish the API metadata where documentation and client libraries
    can find it (should only be true for production deployments)
  * `referenceBucket` - Amazon S3 bucket to which references should be published (required if
    `publish` is true); defaults to `references.taskclutser.net`.
- * `referencePrefix` - Prefix within the reference bucket; something like
-   `myservice/v1/api.json` (required if `publish` is true)
  * `aws` - AWS credentials for uploading to the reference bucket (required if `publish` is true);
    has the form `{accessKeyId: .., secretAccessKey: .., region: ..}`.
- * `monitor` - an instance of [taskcluster-lib-monitor](https://github.com/taskcluster/taskcluster-lib-monitor)
 
 The resulting object has a `references()` method that will return the API
 reference data structure, and an `express(app)` method that configures the API
@@ -423,8 +440,6 @@ let load = loader({
     setup: ({cfg, monitor, validator}) => builder.build({
       rootUrl:          cfg.taskcluster.rootUrl,
       context:          {..},
-      publish:          process.env.NODE_ENV === 'production',
-      aws:              cfg.aws,
       monitor:          monitor.prefix('api'),
       validator,
     }),
