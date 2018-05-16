@@ -101,8 +101,8 @@ class API {
         `Context has unexpected property: ${property}`);
     });
 
-    // make `entries` specific to this rootUrl
-    this.entries = this.builder.entries.map((entry) => {
+    // make `entries` specific to this rootUrl (and add ping)
+    this.entries = _.concat(this.builder.entries, [ping]).map((entry) => {
       entry = _.clone(entry);
 
       // fully-qualify schema references
@@ -132,7 +132,7 @@ class API {
       description:        builder.description,
       baseUrl:            tcUrl.api(this.options.rootUrl, builder.name, builder.version, ''),
       name:               builder.name,
-      entries: _.concat(this.entries, [ping]).filter(entry => !entry.noPublish).map(entry => {
+      entries: this.entries.filter(entry => !entry.noPublish).map(entry => {
         const [route, params] = _cleanRouteAndParams(entry.route);
         var retval = {
           type:           'function',
@@ -243,7 +243,7 @@ class API {
     });
 
     // Add entries to router
-    _.concat(this.entries, [ping]).forEach(entry => {
+    this.entries.forEach(entry => {
       // Route pattern
       var middleware = [entry.route];
 
