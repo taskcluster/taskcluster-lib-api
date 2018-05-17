@@ -2,7 +2,7 @@ const APIBuilder      = require('../');
 const config          = require('typed-env-config');
 const aws             = require('aws-sdk');
 const assert          = require('assert');
-const libUrls            = require('taskcluster-lib-libUrls');
+const libUrls         = require('taskcluster-lib-urls');
 
 suite('api/publish', function() {
   var cfg = config({});
