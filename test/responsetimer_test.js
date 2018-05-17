@@ -53,7 +53,7 @@ suite('api/responsetimer', function() {
   // Create a mock authentication server
   setup(async () => {
     monitor = await monitoring({
-      project: 'tc-lib-api-test',
+      projectName: 'tc-lib-api-test',
       credentials: {clientId: 'fake', accessToken: 'fake'},
       mock: true,
     });

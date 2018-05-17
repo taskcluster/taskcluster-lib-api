@@ -42,15 +42,13 @@ suite('API (context)', function() {
       },
     });
 
-    var app = App({
+    let server = await App({
       port:       60872,
       env:        'development',
       forceSSL:   false,
       trustProxy: false,
+      apis: [api],
     });
-    api.express(app);
-
-    let server = await app.createServer();
 
     await request
       .get('http://localhost:60872/api/test/v1/context')

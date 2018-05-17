@@ -44,15 +44,13 @@ suite('api/auth', function() {
     });
 
     // Create application
-    var app = makeApp({
+    _apiServer = await makeApp({
       port:       23526,
       env:        'development',
       forceSSL:   false,
       trustProxy: false,
+      apis: [api],
     });
-    api.express(app);
-
-    _apiServer = await app.createServer();
   });
 
   // Close server
