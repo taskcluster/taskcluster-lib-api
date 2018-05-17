@@ -3,7 +3,6 @@ var validate        = require('taskcluster-lib-validate');
 var assert          = require('assert');
 var path            = require('path');
 var express         = require('express');
-var urls            = require('taskcluster-lib-urls');
 
 var runningServer = null;
 
