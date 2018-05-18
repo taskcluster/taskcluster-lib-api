@@ -2086,19 +2086,18 @@ taskcluster-client@^1.0.1:
   optionalDependencies:
     sockjs-client "^1.0.3"
 
-taskcluster-client@^5.0.0:
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/taskcluster-client/-/taskcluster-client-5.0.0.tgz#6171941188be26a7c32f18ff80bc17486f60f24f"
+taskcluster-client@^10.0.0:
+  version "10.0.0"
+  resolved "https://registry.yarnpkg.com/taskcluster-client/-/taskcluster-client-10.0.0.tgz#4acc66797897a6a922b9c9ec2c87ddebd884cedd"
   dependencies:
     amqplib "^0.5.1"
-    babel-runtime "^6.26.0"
     debug "^3.1.0"
     hawk "^6.0.2"
     lodash "^4.17.4"
     promise "^8.0.1"
     slugid "^1.1.0"
     superagent "~3.8.1"
-    taskcluster-lib-urls "^1.0.0"
+    taskcluster-lib-urls "^1.1.0"
 
 taskcluster-lib-app@^2.0.3:
   version "2.0.3"
@@ -2160,6 +2159,10 @@ taskcluster-lib-testing@^3.0.0:
 taskcluster-lib-urls@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/taskcluster-lib-urls/-/taskcluster-lib-urls-1.0.0.tgz#ebe6224384903d71b113bf26d63ff7cac48440b9"
+
+taskcluster-lib-urls@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/taskcluster-lib-urls/-/taskcluster-lib-urls-1.1.0.tgz#de6d78a0b61179e7f395ef2d3d7e5a994c1a6446"
 
 taskcluster-lib-validate@^3.0.3:
   version "3.0.3"
