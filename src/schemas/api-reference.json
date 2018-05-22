@@ -188,7 +188,6 @@
                     },
                     "input": {
                         "type": "string",
-                        "format": "uri",
                         "description": "JSON schema for input, if input is taken otherwise not present."
                     },
                     "output": {
@@ -197,7 +196,6 @@
                             {
                                 "title": "Output Schema",
                                 "type": "string",
-                                "format": "uri",
                                 "description": "JSON schema for output, if output is provided otherwise not present."
                             },
                             {
