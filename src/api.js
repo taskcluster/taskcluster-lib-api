@@ -88,7 +88,7 @@ class API {
     await s3.putObject({
       Bucket:           this.options.referenceBucket,
       Key:              `${this.builder.serviceName}/${this.builder.version}/api.json`,
-      Body:             JSON.stringify(this.builder.reference(this.options.rootUrl), undefined, 2),
+      Body:             JSON.stringify(this.builder.reference(), undefined, 2),
       ContentType:      'application/json',
     }).promise();
   }
@@ -263,11 +263,11 @@ const parameterValidator = function(options) {
  *
  * options:
  * {
- *   input:    'http://schemas...input-schema.json',   // optional, null if no input
- *   output:   'http://schemas...output-schema.json',  // optional, null if no output
- *   skipInputValidation:    true,                     // defaults to false
- *   skipOutputValidation:   true,                     // defaults to false
- *   name:     '...',                                  // method name for debug
+ *   input:    'v1/input-schema.json',   // optional, null if no input, relative to service schemas
+ *   output:   'v1/output-schema.json',  // optional, null if no output, relative to service schemas
+ *   skipInputValidation:    true,       // defaults to false
+ *   skipOutputValidation:   true,       // defaults to false
+ *   name:     '...',                    // method name for debug
  * }
  *
  * This validates body against the schema given in `options.input` and returns
@@ -278,9 +278,15 @@ const parameterValidator = function(options) {
  * against schema and always returns a 200 OK reply.
  */
 var schema = function(validate, rootUrl, serviceName, options) {
+  // convert relative schema references to id's
+  const input = options.input && !options.skipInputValidation &&
+    url.resolve(libUrls.schema(rootUrl, serviceName, ''), options.input);
+  const output = options.output && options.output !== 'blob' && !options.skipOutputValidation &&
+    url.resolve(libUrls.schema(rootUrl, serviceName, ''), options.output);
+
   return function(req, res, next) {
     // If input schema is defined we need to validate the input
-    if (options.input !== undefined && !options.skipInputValidation) {
+    if (input) {
       if (!typeis(req, 'application/json')) {
         return res.reportError(
           'MalformedPayload',
@@ -289,13 +295,13 @@ var schema = function(validate, rootUrl, serviceName, options) {
             contentType: req.headers['content-type'] || null,
           });
       }
-      var error = validate(req.body, libUrls.schema('taskcluster:', serviceName, options.input));
+      var error = validate(req.body, input);
       if (error) {
         debug('Input schema validation error: ' + error);
         return res.reportError(
           'InputValidationError',
           error,
-          {schema: libUrls.schema(rootUrl, serviceName, options.input)});
+          {schema: libUrls.schema(rootUrl, serviceName, input)});
       }
     }
     // Add a reply method sending JSON replies, this will always reply with HTTP
@@ -307,13 +313,12 @@ var schema = function(validate, rootUrl, serviceName, options) {
       }
       // If we're supposed to validate outgoing messages and output schema is
       // defined, then we have to validate against it...
-      if (options.output !== undefined && !options.skipOutputValidation &&
-         options.output !== 'blob') {
-        var error = validate(json, libUrls.schema('taskcluster:', serviceName, options.output));
+      if (output) {
+        var error = validate(json, output);
         if (error) {
           debug('Output schema validation error: ' + error);
           let err = new Error('Output schema validation error: ' + error);
-          err.schema = libUrls.schema(rootUrl, serviceName, options.output);
+          err.schema = libUrls.schema(rootUrl, serviceName, output);
           err.url = req.url;
           err.payload = json;
           return res.reportInternalError(err);

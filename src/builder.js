@@ -217,10 +217,8 @@ APIBuilder.prototype.build = async function(options) {
 
 /**
  * Construct the API reference document as a JSON value.
- *
- * Takes an optional rootUrl for the old-style publishing
  */
-APIBuilder.prototype.reference = function(rootUrl) {
+APIBuilder.prototype.reference = function() {
   var reference = {
     version:            0,
     $schema:            'http://schemas.taskcluster.net/base/v1/api-reference.json#',
@@ -241,8 +239,8 @@ APIBuilder.prototype.reference = function(rootUrl) {
         name:           entry.name,
         stability:      entry.stability,
         title:          entry.title,
-        input:          entry.input ? libUrls.schema(rootUrl || '', this.serviceName, entry.input) : undefined,
-        output:         entry.output ? libUrls.schema(rootUrl || '', this.serviceName, entry.output) : undefined,
+        input:          entry.input,
+        output:         entry.output,
         description:    entry.description,
       };
       if (entry.scopes) {
