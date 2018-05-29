@@ -185,6 +185,8 @@ APIBuilder.prototype.declare = function(options, handler) {
   if (this.entries.some(entry => entry.name === options.name)) {
     throw new Error('This function has already been declared.');
   }
+  // make options.input and options.output relative to the service schemas
+  // (<rootUrl>/schemas>/<serviceName>)
   if (options.input) {
     this.hasSchemas = true;
     assert(!options.input.startsWith('http'), 'entry.input should be a filename, not a url');
