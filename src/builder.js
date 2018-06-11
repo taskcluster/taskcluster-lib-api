@@ -6,11 +6,11 @@ const _ = require('lodash');
 const libUrls = require('taskcluster-lib-urls');
 const Ajv = require('ajv');
 const utils = require('./utils');
-const errors = require('./errors');
+const errors = require('./middleware/errors');
 const ScopeExpressionTemplate = require('./expressions');
 const API = require('./api');
 
-var debug = Debug('api');
+const debug = Debug('api');
 
 /**
  * A ping method, added automatically to every service
@@ -36,7 +36,7 @@ const ping = {
 /**
  * Create an APIBuilder; see README for syntax
  */
-var APIBuilder = function(options) {
+const APIBuilder = function(options) {
   assert(!options.schemaPrefix, 'schemaPrefix is no longer allowed!');
   ['title', 'description', 'serviceName', 'version'].forEach(function(key) {
     assert(options[key], 'Option \'' + key + '\' must be provided');
@@ -66,7 +66,7 @@ var APIBuilder = function(options) {
 };
 
 /** Stability levels offered by API method */
-var stability = {
+const stability = {
   /**
    * API has been marked for deprecation and should not be used in new clients.
    *
@@ -105,7 +105,7 @@ var stability = {
 };
 
 // List of valid stability-levels
-var STABILITY_LEVELS = _.values(stability);
+const STABILITY_LEVELS = _.values(stability);
 APIBuilder.stability = stability;
 
 /**
@@ -221,7 +221,7 @@ APIBuilder.prototype.build = async function(options) {
  * Construct the API reference document as a JSON value.
  */
 APIBuilder.prototype.reference = function() {
-  var reference = {
+  const reference = {
     version:            0,
     $schema:            'http://schemas.taskcluster.net/base/v1/api-reference.json#',
     title:              this.title,
@@ -232,7 +232,7 @@ APIBuilder.prototype.reference = function() {
     entries: this.entries.filter(entry => !entry.noPublish).map(entry => {
       const [route, params] = utils.cleanRouteAndParams(entry.route);
 
-      var retval = {
+      const retval = {
         type:           'function',
         method:         entry.method,
         route:          route,
@@ -252,13 +252,13 @@ APIBuilder.prototype.reference = function() {
     }),
   };
 
-  var ajv = Ajv({useDefaults: true, format: 'full', verbose: true, allErrors: true});
-  var schemaPath = path.join(__dirname, 'schemas', 'api-reference.json');
-  var schema = fs.readFileSync(schemaPath, {encoding: 'utf-8'});
-  var validate = ajv.compile(JSON.parse(schema));
+  const ajv = Ajv({useDefaults: true, format: 'full', verbose: true, allErrors: true});
+  const schemaPath = path.join(__dirname, 'schemas', 'api-reference.json');
+  const schema = fs.readFileSync(schemaPath, {encoding: 'utf-8'});
+  const validate = ajv.compile(JSON.parse(schema));
 
   // Check against it
-  var valid = validate(reference);
+  const valid = validate(reference);
   if (!valid) {
     debug('Reference:\n%s', JSON.stringify(reference, null, 2));
     throw new Error(`API.references(): Failed to validate against schema:\n

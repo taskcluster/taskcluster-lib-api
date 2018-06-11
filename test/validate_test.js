@@ -8,7 +8,7 @@ suite('api/validate', function() {
   const u = path => libUrls.api(helper.rootUrl, 'test', 'v1', path);
 
   // Create test api
-  var builder = new APIBuilder({
+  const builder = new APIBuilder({
     title:        'Test Api',
     description:  'Another test api',
     serviceName:  'test',
@@ -95,7 +95,7 @@ suite('api/validate', function() {
 
   // Test valid input
   test('input (valid)', function() {
-    var url = u('/test-input');
+    const url = u('/test-input');
     return request
       .post(url)
       .send({value: 5})
@@ -107,7 +107,7 @@ suite('api/validate', function() {
 
   // Test invalid input
   test('input (invalid)', function() {
-    var url = u('/test-input');
+    const url = u('/test-input');
     return request
       .post(url)
       .send({value: 11})
@@ -119,7 +119,7 @@ suite('api/validate', function() {
 
   // Test valid output
   test('output (valid)', function() {
-    var url = u('/test-output');
+    const url = u('/test-output');
     return request
       .get(url)
       .then(function(res) {
@@ -130,7 +130,7 @@ suite('api/validate', function() {
 
   // test invalid output
   test('output (invalid)', function() {
-    var url = u('/test-invalid-output');
+    const url = u('/test-invalid-output');
     return request
       .get(url)
       .then(res => assert(false, 'should have failed!'))
@@ -141,7 +141,7 @@ suite('api/validate', function() {
 
   // test skipping input validation
   test('skip input validation', function() {
-    var url = u('/test-skip-input-validation');
+    const url = u('/test-skip-input-validation');
     return request
       .post(url)
       .send({value: 100})
@@ -153,7 +153,7 @@ suite('api/validate', function() {
 
   // test skipping output validation
   test('skip output validation', function() {
-    var url = u('/test-skip-output-validation');
+    const url = u('/test-skip-output-validation');
     return request
       .get(url)
       .then(function(res) {
@@ -164,7 +164,7 @@ suite('api/validate', function() {
 
   // test blob output
   test('blob output', function() {
-    var url = u('/test-blob-output');
+    const url = u('/test-blob-output');
     return request
       .get(url)
       .then(function(res) {
@@ -174,7 +174,7 @@ suite('api/validate', function() {
   });
 
   test('input (correct content-type)', function() {
-    var url = u('/test-input');
+    const url = u('/test-input');
     return request
       .post(url)
       .send(JSON.stringify({value: 5}))
@@ -185,7 +185,7 @@ suite('api/validate', function() {
   });
 
   test('input (wrong content-type)', function() {
-    var url = u('/test-input');
+    const url = u('/test-input');
     return request
       .post(url)
       .send(JSON.stringify({value: 5}))
