@@ -3,6 +3,8 @@ const assert          = require('assert');
 const APIBuilder      = require('../');
 const helper          = require('./helper');
 const libUrls         = require('taskcluster-lib-urls');
+const path            = require('path');
+const SchemaSet       = require('taskcluster-lib-validate');
 
 suite('api/validate', function() {
   const u = path => libUrls.api(helper.rootUrl, 'test', 'v1', path);
@@ -20,7 +22,7 @@ suite('api/validate', function() {
     method:   'post',
     route:    '/test-input',
     name:     'testInputValidate',
-    input:    'test-schema.json',
+    input:    'test-schema.yml',
     title:    'Test End-Point',
     description:  'Place we can call to test something',
   }, function(req, res) {
@@ -32,7 +34,7 @@ suite('api/validate', function() {
     method:   'get',
     route:    '/test-output',
     name:     'testInputValidOutputValidate',
-    output:   'test-schema.json',
+    output:   'test-schema.yml',
     title:    'Test End-Point',
     description:  'Place we can call to test something',
   }, function(req, res) {
@@ -44,7 +46,7 @@ suite('api/validate', function() {
     method:   'get',
     route:    '/test-invalid-output',
     name:     'testInputInvalidOutputValidate',
-    output:   'test-schema.json',
+    output:   'test-schema.yml',
     title:    'Test End-Point',
     description:  'Place we can call to test something',
   }, function(req, res) {
@@ -56,7 +58,7 @@ suite('api/validate', function() {
     method:   'post',
     route:    '/test-skip-input-validation',
     name:     'testInputSkipInputValidation',
-    input:    'test-schema.json',
+    input:    'test-schema.yml',
     skipInputValidation: true,
     title:    'Test End-Point',
     description:  'Place we can call to test something',
@@ -69,7 +71,7 @@ suite('api/validate', function() {
     method:   'get',
     route:    '/test-skip-output-validation',
     name:     'testOutputSkipOutputValidation',
-    output:    'test-schema.json',
+    output:    'test-schema.yml',
     skipOutputValidation: true,
     title:    'Test End-Point',
     description:  'Place we can call to test something',
@@ -194,5 +196,39 @@ suite('api/validate', function() {
       .catch(function(err) {
         assert(err.status === 400, 'Request wasn\'t rejected');
       });
+  });
+
+  test('nonexistent schemas are caught at setup time', async function() {
+    const builder = new APIBuilder({
+      title:        'Test Api',
+      description:  'Another test api',
+      serviceName:  'test',
+      version:      'v1',
+    });
+
+    builder.declare({
+      method:   'post',
+      route:    '/test-input',
+      name:     'testInputValidate',
+      input:    'no-such-schema.yml',
+      title:    'Test End-Point',
+      description:  '..',
+    }, function(req, res) {});
+
+    const schemaset = new SchemaSet({
+      serviceName: 'test',
+      folder: path.join(__dirname, 'schemas'),
+    });
+
+    const api = await builder.build({rootUrl: libUrls.testRootUrl(), schemaset});
+    try {
+      api.router();
+    } catch (err) {
+      if (!/No schema with id/.test(err)) {
+        throw err;
+      }
+      return;
+    }
+    assert(0, 'Did not get expected exception');
   });
 });

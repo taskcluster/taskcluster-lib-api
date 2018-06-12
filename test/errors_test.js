@@ -130,7 +130,7 @@ suite('api/errors', function() {
     route:    '/inputvalidationerror',
     name:     'InputValidationError',
     title:    'Test End-Point',
-    input:    'test-schema.json',
+    input:    'test-schema.yml',
     description:  'Place we can call to test something',
     cleanPayload: payload => {
       payload.secret = '<HIDDEN>';

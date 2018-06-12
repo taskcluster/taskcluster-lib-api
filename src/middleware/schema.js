@@ -1,3 +1,4 @@
+const _ = require('lodash');
 const url = require('url');
 const libUrls = require('taskcluster-lib-urls');
 const typeis = require('type-is');
@@ -24,12 +25,21 @@ const debug = Debug('api:schema');
  * Handlers may output errors using `req.json`, as `req.reply` will validate
  * against schema and always returns a 200 OK reply.
  */
-const validateSchemas = ({validator, rootUrl, serviceName, entry}) => {
+const validateSchemas = ({validator, absoluteSchemas, rootUrl, serviceName, entry}) => {
   // convert relative schema references to id's
   const input = entry.input && !entry.skipInputValidation &&
     url.resolve(libUrls.schema(rootUrl, serviceName, ''), entry.input);
   const output = entry.output && entry.output !== 'blob' && !entry.skipOutputValidation &&
     url.resolve(libUrls.schema(rootUrl, serviceName, ''), entry.output);
+
+  // double-check that the schema exists
+  if (input && !_.find(absoluteSchemas, {$id: input})) {
+    throw new Error(`No schema with id ${input} for input to API method ${entry.name}`);
+  }
+
+  if (output && output != 'blob' && !_.find(absoluteSchemas, {$id: output})) {
+    throw new Error(`No schema with id ${output} for output from API method ${entry.name}`);
+  }
 
   return (req, res, next) => {
     // If input schema is defined we need to validate the input

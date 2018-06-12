@@ -148,12 +148,12 @@ class APIBuilder {
     if (options.input) {
       this.hasSchemas = true;
       assert(!options.input.startsWith('http'), 'entry.input should be a filename, not a url');
-      options.input = `${this.version}/${options.input.replace(/ya?ml$/, 'json#')}`;
+      options.input = `${this.version}/${options.input.replace(/\.(ya?ml|json)$/, '.json#')}`;
     }
     if (options.output && options.output !== 'blob') {
       this.hasSchemas = true;
       assert(!options.output.startsWith('http'), 'entry.output should be a filename, not a url');
-      options.output = `${this.version}/${options.output.replace(/ya?ml$/, 'json#')}`;
+      options.output = `${this.version}/${options.output.replace(/\.(ya?ml|json)$/, '.json#')}`;
     }
     this.entries.push(options);
   }

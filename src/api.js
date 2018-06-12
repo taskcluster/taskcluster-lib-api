@@ -92,10 +92,11 @@ class API {
       inputLimit,
       signatureValidator,
       validator,
+      schemaset,
       context,
     } = this.options;
-
     const {errorCodes, serviceName} = this.builder;
+    const absoluteSchemas = schemaset.absoluteSchemas(rootUrl);
 
     // Create router
     const router = express.Router();
@@ -122,7 +123,7 @@ class API {
         remoteAuthentication({signatureValidator, entry}),
         parameterValidator({entry}),
         queryValidator({entry}),
-        validateSchemas({validator, rootUrl, serviceName, entry}),
+        validateSchemas({validator, absoluteSchemas, rootUrl, serviceName, entry}),
         callHandler({entry, context, monitor})
       );
 
