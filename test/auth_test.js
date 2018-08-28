@@ -311,6 +311,40 @@ suite('api/auth', function() {
 
   testEndpoint({
     method: 'get',
+    route: '/test-id-scope',
+    name: 'test-id-scope',
+    scopes: {AllOf: [{for: 'scope', in: 'scopes', each: '<scope>'}]},
+    handler: async (req, res) => {
+      res.status(200).json({
+        /*scopes: await req.scopes(),*/
+        clientId: await req.clientId(),
+        /*expires: await req.expires(),*/
+      });
+    },
+    tests : [
+      {
+        label: 'client has sufficient scopes',
+        id: 'admin',
+        tester: (auth, url) => request.get(url).hawk(auth)
+          .then(function(res) {
+            assert(res.body.clientId == 'admin');
+            return res;
+          }),
+      },
+      {
+        label: 'client does not have sufficient scopes',
+        id: 'test-user',
+        tester: (auth, url) => request.get(url).hawk(auth)
+          .then(function(res) {
+            assert(res.body.clientId != 'admin');
+            return res;
+          }),
+      },
+    ],
+  });
+
+  testEndpoint({
+    method: 'get',
     route: '/test-dyn-auth',
     name: 'testDynAuth',
     scopes: {AllOf: [{for: 'scope', in: 'scopes', each: '<scope>'}]},
