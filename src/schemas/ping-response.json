@@ -1,0 +1,17 @@
+{
+  "$schema" : "http://json-schema.org/draft-07/schema#",
+  "title" : "Ping Response",
+  "description" : "Response to a Ping request which tells service status and uptime",
+  "type" : "object",
+  "properties" : {
+    "alive" : {
+      "description": "Denotes that the server is up and running",
+      "type" : "boolean"
+    },
+    "uptime" : {
+      "description": "Uptime of the server",
+      "type" : "number"
+    }
+  },
+  "required" : ["alive", "uptime"]
+}
