@@ -192,10 +192,11 @@
                     },
                     "output": {
                         "type": "string",
-                        "anyOf": [
+                        "oneOf": [
                             {
                                 "title": "Output Schema",
                                 "type": "string",
+                                "pattern": "^(?!blob$)",
                                 "description": "JSON schema for output, if output is validated, otherwise not present. The value must be a relative URI, based on the service's schema location; that is, based at `<rootUrl>/schemas/<serviceName`."
                             },
                             {
