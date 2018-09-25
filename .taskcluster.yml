@@ -56,21 +56,57 @@ tasks:
           owner: ${event.pusher.name}@users.noreply.github.com
           source: ${event.repository.url}
         
-      else:
+  - $if: 'tasks_for == "github-push"'
+    then:
+      $if: 'event.ref == "refs/heads/master"'
+      then:
         provisionerId: aws-provisioner-v1
         workerType: github-worker
         taskId: {$eval: as_slugid("push_task")}
         created: {$fromNow: ''}
         deadline: {$fromNow: '1 hour'}
+        scopes:
+          - secrets:get:repo:github.com/taskcluster/taskcluster-lib-api:legacy-api-refs-uploader
         payload:
+          features:
+            taskclusterProxy:
+              true
           maxRunTime: 3600
-          image: "node:8"
+          image: node:10
           command:
-            - "/bin/bash"
-            - "-lc"
-            - "git clone ${event.repository.url} repo && cd repo && git checkout ${event.after} && yarn global add node-gyp && yarn install && yarn test"
+            - /bin/bash
+            - '--login'
+            - '-cx'
+            - >-
+              git clone ${event.repository.url} repo &&
+              cd repo &&
+              git config advice.detachedHead false &&
+              npm install aws-sdk &&
+              npm install taskcluster-client@5.0.0 &&
+              git checkout ${event.after} &&
+              DEBUG=* node legacy-api-refs-upload.js
         metadata:
-          name: "taskcluster-lib-api test"
-          description: "tests for metrics and monitoring library"
+          name: "taskcluster-lib-api API ref upload"
+          description: "Upload api-references.json to the old schemas.taskcluster.net"
           owner: ${event.pusher.name}@users.noreply.github.com
           source: ${event.repository.url}
+        
+  - $if: 'tasks_for == "github-push"'
+    then:
+      provisionerId: aws-provisioner-v1
+      workerType: github-worker
+      taskId: {$eval: as_slugid("push_task")}
+      created: {$fromNow: ''}
+      deadline: {$fromNow: '1 hour'}
+      payload:
+        maxRunTime: 3600
+        image: "node:8"
+        command:
+          - "/bin/bash"
+          - "-lc"
+          - "git clone ${event.repository.url} repo && cd repo && git checkout ${event.after} && yarn global add node-gyp && yarn install && yarn test"
+      metadata:
+        name: "taskcluster-lib-api test"
+        description: "tests for metrics and monitoring library"
+        owner: ${event.pusher.name}@users.noreply.github.com
+        source: ${event.repository.url}
