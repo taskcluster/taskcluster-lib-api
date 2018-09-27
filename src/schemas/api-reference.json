@@ -66,7 +66,15 @@
     "properties": {
         "version": {
             "description": "API reference version",
-            "const": 0
+            "type": "integer",
+            "enum": [
+                0
+            ]
+        },
+        "apiVersion": {
+            "description": "Version of the API",
+            "type": "string",
+            "pattern": "^v[0-9]+$"
         },
         "$schema": {
             "description": "Link to schema for this reference. That is a link to this very document. Typically used to identify what kind of reference this file is.",
@@ -87,7 +95,7 @@
             "type": "string",
             "format": "uri"
         },
-        "name": {
+        "serviceName": {
             "description": "Name of service for automation. Will be consumed by client generators to produce URLs",
             "type": "string",
             "minLength": 1,
@@ -231,7 +239,8 @@
         "title",
         "description",
         "baseUrl",
-        "name",
-        "entries"
+        "serviceName",
+        "entries",
+        "apiVersion"
     ]
 }

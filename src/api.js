@@ -635,6 +635,7 @@ var handle = function(handler, context, name) {
  *   title:         "API Title",
  *   description:   "API description in markdown",
  *   schemaPrefix:  "http://schemas..../queue/",    // Prefix for all schemas
+ *   name: serviceName (without `taskcluster-` prefix
  *   params: {                                      // Patterns for URL params
  *     param1:  /.../,                // Reg-exp pattern
  *     param2(val) { return "..." }   // Function, returns message if invalid
@@ -660,6 +661,7 @@ var API = function(options) {
     schemaPrefix:   '',
     params:         {},
     context:        [],
+    apiVersion:     'v1',
     errorCodes:     {},
   });
   _.forEach(this._options.errorCodes, (value, key) => {
@@ -979,7 +981,8 @@ API.prototype.reference = function(options) {
     title:              this._options.title,
     description:        this._options.description,
     baseUrl:            options.baseUrl,
-    name:               this._options.name,
+    serviceName:        this._options.name,
+    apiVersion:         this._options.apiVersion,
     entries: _.concat(this._entries, [ping]).filter(entry => !entry.noPublish).map(function(entry) {
       const [route, params] = cleanRouteAndParams(entry.route);
       var retval = {
