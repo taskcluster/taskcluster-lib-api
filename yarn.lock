@@ -618,7 +618,7 @@ escape-string-regexp@1.0.5, escape-string-regexp@^1.0.2, escape-string-regexp@^1
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-1.0.5.tgz#1b61c0562190a8dff6ae3bb2cf0200ca130b86d4"
 
-eslint-config-taskcluster@^3.0.0:
+eslint-config-taskcluster@3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/eslint-config-taskcluster/-/eslint-config-taskcluster-3.0.0.tgz#ce50466c13eef198c605328887ef13b8a37d8c92"
   dependencies:
@@ -1838,16 +1838,16 @@ strip-json-comments@~2.0.1:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/strip-json-comments/-/strip-json-comments-2.0.1.tgz#3c531942e908c2697c0ec344858c286c7ca0a60a"
 
-superagent-hawk@0.0.6, superagent-hawk@^0.0.6:
+superagent-hawk@0.0.6:
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/superagent-hawk/-/superagent-hawk-0.0.6.tgz#0cfb70e21546e3a3e902da208a28edd965f82dab"
   dependencies:
     hawk "~1.0.0"
     qs "^0.6.6"
 
-superagent@3.8.2:
-  version "3.8.2"
-  resolved "https://registry.yarnpkg.com/superagent/-/superagent-3.8.2.tgz#e4a11b9d047f7d3efeb3bbe536d9ec0021d16403"
+superagent@3.8.1, superagent@~3.8.1:
+  version "3.8.1"
+  resolved "https://registry.yarnpkg.com/superagent/-/superagent-3.8.1.tgz#2571fd921f3fcdba43ac68c3b35c91951532701f"
   dependencies:
     component-emitter "^1.2.0"
     cookiejar "^2.1.0"
@@ -1860,9 +1860,9 @@ superagent@3.8.2:
     qs "^6.5.1"
     readable-stream "^2.0.5"
 
-superagent@^3.8.1, superagent@~3.8.1:
-  version "3.8.1"
-  resolved "https://registry.yarnpkg.com/superagent/-/superagent-3.8.1.tgz#2571fd921f3fcdba43ac68c3b35c91951532701f"
+superagent@3.8.2:
+  version "3.8.2"
+  resolved "https://registry.yarnpkg.com/superagent/-/superagent-3.8.2.tgz#e4a11b9d047f7d3efeb3bbe536d9ec0021d16403"
   dependencies:
     component-emitter "^1.2.0"
     cookiejar "^2.1.0"
@@ -1915,7 +1915,7 @@ taskcluster-client@10.0.0, taskcluster-client@^10.0.0:
     superagent "~3.8.1"
     taskcluster-lib-urls "^1.1.0"
 
-taskcluster-lib-app@^10.0.0:
+taskcluster-lib-app@10.0.0:
   version "10.0.0"
   resolved "https://registry.yarnpkg.com/taskcluster-lib-app/-/taskcluster-lib-app-10.0.0.tgz#d9ab50c0ce52ebeee94f183b755ef2aeba8ec0fa"
   dependencies:
@@ -1929,7 +1929,7 @@ taskcluster-lib-app@^10.0.0:
     morgan-debug "^2.0.0"
     promise "^8.0.1"
 
-taskcluster-lib-monitor@^10.0.0:
+taskcluster-lib-monitor@10.0.0:
   version "10.0.0"
   resolved "https://registry.yarnpkg.com/taskcluster-lib-monitor/-/taskcluster-lib-monitor-10.0.0.tgz#85dc2ca71a388ac58100bf26392930ea98a0c752"
   dependencies:
@@ -1946,7 +1946,7 @@ taskcluster-lib-scopes@^10.0.1:
   version "10.0.1"
   resolved "https://registry.yarnpkg.com/taskcluster-lib-scopes/-/taskcluster-lib-scopes-10.0.1.tgz#f3921b2b86e7c09581b045b9b880a4c35fd243e0"
 
-taskcluster-lib-testing@^10.0.0:
+taskcluster-lib-testing@10.0.0:
   version "10.0.0"
   resolved "https://registry.yarnpkg.com/taskcluster-lib-testing/-/taskcluster-lib-testing-10.0.0.tgz#c1dc760ab9420212f068421c420bf1e3790eced0"
   dependencies:
@@ -1967,19 +1967,19 @@ taskcluster-lib-testing@^10.0.0:
     taskcluster-lib-validate "^10.0.0"
     uuid "^3.1.0"
 
+taskcluster-lib-urls@10.0.0:
+  version "10.0.0"
+  resolved "https://registry.yarnpkg.com/taskcluster-lib-urls/-/taskcluster-lib-urls-10.0.0.tgz#ee4c687b4539171d8aef39b38a63c8b9bc82f82e"
+
 taskcluster-lib-urls@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/taskcluster-lib-urls/-/taskcluster-lib-urls-1.1.0.tgz#de6d78a0b61179e7f395ef2d3d7e5a994c1a6446"
 
-taskcluster-lib-urls@^10.0.0:
-  version "10.0.0"
-  resolved "https://registry.yarnpkg.com/taskcluster-lib-urls/-/taskcluster-lib-urls-10.0.0.tgz#ee4c687b4539171d8aef39b38a63c8b9bc82f82e"
-
-taskcluster-lib-validate@^10.0.0:
-  version "10.0.0"
-  resolved "https://registry.yarnpkg.com/taskcluster-lib-validate/-/taskcluster-lib-validate-10.0.0.tgz#5baf30abe794b1da56a055baa0f3636725627645"
+taskcluster-lib-validate@11.0.0:
+  version "11.0.0"
+  resolved "https://registry.yarnpkg.com/taskcluster-lib-validate/-/taskcluster-lib-validate-11.0.0.tgz#de34e8262d4414539647976f9c9d03c9763902ad"
   dependencies:
-    ajv "^5.3.0"
+    ajv "^6.5.0"
     app-root-dir "^1.0.2"
     aws-sdk "^2.142.0"
     debug "^3.1.0"
@@ -1991,11 +1991,11 @@ taskcluster-lib-validate@^10.0.0:
     taskcluster-lib-urls "^1.1.0"
     walk "^2.3.9"
 
-taskcluster-lib-validate@^11.0.0:
-  version "11.0.0"
-  resolved "https://registry.yarnpkg.com/taskcluster-lib-validate/-/taskcluster-lib-validate-11.0.0.tgz#de34e8262d4414539647976f9c9d03c9763902ad"
+taskcluster-lib-validate@^10.0.0:
+  version "10.0.0"
+  resolved "https://registry.yarnpkg.com/taskcluster-lib-validate/-/taskcluster-lib-validate-10.0.0.tgz#5baf30abe794b1da56a055baa0f3636725627645"
   dependencies:
-    ajv "^6.5.0"
+    ajv "^5.3.0"
     app-root-dir "^1.0.2"
     aws-sdk "^2.142.0"
     debug "^3.1.0"
@@ -2077,7 +2077,7 @@ type-is@^1.6.15, type-is@~1.6.15:
     media-typer "0.3.0"
     mime-types "~2.1.15"
 
-typed-env-config@^1.1.1:
+typed-env-config@1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/typed-env-config/-/typed-env-config-1.1.1.tgz#debed355e08ef2e5f708d717862e43ed81bafe86"
   dependencies:
