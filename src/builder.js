@@ -4,7 +4,6 @@ const Debug = require('debug');
 const assert = require('assert');
 const _ = require('lodash');
 const libUrls = require('taskcluster-lib-urls');
-const Ajv = require('ajv');
 const utils = require('./utils');
 const errors = require('./middleware/errors');
 const ScopeExpressionTemplate = require('./expressions');
@@ -182,7 +181,7 @@ class APIBuilder {
     const reference = {
       version:            0,
       apiVersion:         this.version || 'v1',
-      $schema:            'http://schemas.taskcluster.net/base/v1/api-reference.json#',
+      $schema:            '/schemas/common/api-reference-v0.json#',
       title:              this.title,
       description:        this.description,
       // We hardcode taskcluster.net here because no other system uses baseUrl
@@ -210,19 +209,6 @@ class APIBuilder {
         return retval;
       }),
     };
-
-    const ajv = Ajv({useDefaults: true, format: 'full', verbose: true, allErrors: true});
-    const schemaPath = path.join(__dirname, 'schemas', 'api-reference.json');
-    const schema = fs.readFileSync(schemaPath, {encoding: 'utf-8'});
-    const validate = ajv.compile(JSON.parse(schema));
-
-    // Check against it
-    const valid = validate(reference);
-    if (!valid) {
-      debug('Reference:\n%s', JSON.stringify(reference, null, 2));
-      throw new Error(`API.references(): Failed to validate against schema:\n
-        ${ajv.errorsText(validate.errors, {separator: '\n  * '})}`);
-    }
 
     return reference;
   }
