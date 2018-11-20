@@ -180,14 +180,11 @@ class APIBuilder {
    */
   reference() {
     const reference = {
-      version:            0,
-      apiVersion:         this.apiVersion,
       $schema:            '/schemas/common/api-reference-v0.json#',
       title:              this.title,
       description:        this.description,
-      // We hardcode taskcluster.net here because no other system uses baseUrl
-      baseUrl:            `https://${this.serviceName}.taskcluster.net/${this.apiVersion}`,
       serviceName:        this.serviceName,
+      apiVersion:         this.apiVersion,
       entries: this.entries.filter(entry => !entry.noPublish).map(entry => {
         const [route, params] = utils.cleanRouteAndParams(entry.route);
 
