@@ -68,6 +68,10 @@ const validateSchemas = ({validator, absoluteSchemas, rootUrl, serviceName, entr
         const err = new Error('Deferred auth was never checked!');
         return res.reportInternalError(err);
       }
+      // Allow res.reply to support 204 with empty body
+      if (!json) {
+        return res.status(204).send();
+      }
       // If we're supposed to validate outgoing messages and output schema is
       // defined, then we have to validate against it...
       if (output) {
