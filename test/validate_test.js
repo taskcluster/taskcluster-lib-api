@@ -238,8 +238,8 @@ suite('api/validate', function() {
       .then(function(res) {
         assert(false, 'Request validation failed');
       }).catch(function(err) {
-        assert(err.status === 500, 'Request failed as empty json is returned as response')
-      })
+        assert(err.status === 500, 'Request failed as empty json is returned as response');
+      });
   });
 
   test('nonexistent schemas are caught at setup time', async function() {
