@@ -96,7 +96,6 @@ suite('api/validate', function() {
     method:   'get',
     route:    '/test-res-reply',
     name:     'testResReplyGet',
-    output:   'test-schema.yml',
     title:    'Test End-Point',
     description:  'Place we can call to test something',
   }, function(req, res) {
@@ -222,7 +221,7 @@ suite('api/validate', function() {
   });
 
   // Test res.reply with empty body for get request
-  test('res reply with empty body get request', function() {
+  test('res reply with empty body get request without output schema', function() {
     const url = u('/test-res-reply');
     return request
       .get(url)
@@ -232,13 +231,15 @@ suite('api/validate', function() {
   });
 
   // Test res.reply with empty body for post request
-  test('res reply with empty body post request', function() {
+  test('res reply with empty body post request with output schema', function() {
     const url = u('/test-res-reply-post');
     return request
       .post(url)
       .then(function(res) {
-        assert(res.status === 204, 'Got 204 status code with empty body');
-      });
+        assert(false, 'Request validation failed');
+      }).catch(function(err) {
+        assert(err.status === 500, 'Request failed as empty json is returned as response')
+      })
   });
 
   test('nonexistent schemas are caught at setup time', async function() {
