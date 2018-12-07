@@ -72,7 +72,7 @@ const buildReportErrorMethod = ({errorCodes, monitor, entry}) => {
           '* statusCode: ' + status,
           '* time:       ' + requestInfo.time,
         ].join('\n');
-      res.status(status).json({code, message, requestInfo});
+      throw ({status, code, message, requestInfo});
     };
 
     res.reportInternalError = (err, tags = {}) => {
