@@ -31,7 +31,12 @@ const callHandler = ({entry, context, monitor}) => {
       } else if (err.code === 'AuthenticationError') {
         return res.reportError('AuthenticationFailed', err.message, err.details);
       }
-      return res.status(err.status).json(err);
+      if (err.status) {
+        const status = err.status;
+        delete err.status;
+        return res.status(status).json(err);
+      }
+      return res.reportInternalError(err);
     });
   };
 };

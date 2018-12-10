@@ -72,30 +72,36 @@ const buildReportErrorMethod = ({errorCodes, monitor, entry}) => {
           '* statusCode: ' + status,
           '* time:       ' + requestInfo.time,
         ].join('\n');
-      throw ({status, code, message, requestInfo});
+        throw ({status, code, message, requestInfo});
     };
 
     res.reportInternalError = (err, tags = {}) => {
-      const incidentId = uuid.v4();
-      res.reportError(
-        'InternalServerError',
-        'Internal Server Error, incidentId: ' + incidentId,
-        {incidentId}
-      );
-      debug(
-        'Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s',
-        req.url, err, err, incidentId, err.stack
-      );
-      if (monitor) {
-        err.incidentId = incidentId;
-        err.method = method;
-        err.params = req.params;
-        let payload = req.body;
-        if (cleanPayload) {
-          payload = cleanPayload(payload);
+      try {
+        const incidentId = uuid.v4();
+        res.reportError(
+          'InternalServerError',
+          'Internal Server Error, incidentId: ' + incidentId,
+          {incidentId}
+        );
+        debug(
+          'Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s',
+          req.url, err, err, incidentId, err.stack
+        );
+        if (monitor) {
+          err.incidentId = incidentId;
+          err.method = method;
+          err.params = req.params;
+          let payload = req.body;
+          if (cleanPayload) {
+            payload = cleanPayload(payload);
+          }
+          err.payload = req.payload;
+          monitor.reportError(err, Object.assign(tags, {method}));
         }
-        err.payload = req.payload;
-        monitor.reportError(err, Object.assign(tags, {method}));
+      } catch (err) {
+        const status = err.status;
+        delete err.status
+        return res.status(status).json(err);
       }
     };
     next();
