@@ -29,6 +29,7 @@ suite('api/errors', function() {
     description:  'Place we can call to test something',
   }, function(req, res) {
     res.reportError('InputError', 'Testing Error', {dee: 'tails'});
+    console.log('===1===');
   });
 
   test('InputError response', async function() {

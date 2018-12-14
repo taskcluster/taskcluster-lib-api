@@ -1,6 +1,7 @@
 const uuid = require('uuid');
 const debug = require('debug')('api:errors');
 const _ = require('lodash');
+const ErrorReply = require('../error-reply')
 
 const ERROR_CODES = {
   MalformedPayload:         400,  // Only for JSON.parse() errors
@@ -72,7 +73,7 @@ const buildReportErrorMethod = ({errorCodes, monitor, entry}) => {
           '* statusCode: ' + status,
           '* time:       ' + requestInfo.time,
         ].join('\n');
-        throw ({status, code, message, requestInfo});
+        throw ({next, code, message, requestInfo});
     };
 
     res.reportInternalError = (err, tags = {}) => {
@@ -99,11 +100,16 @@ const buildReportErrorMethod = ({errorCodes, monitor, entry}) => {
           monitor.reportError(err, Object.assign(tags, {method}));
         }
       } catch (err) {
-        const status = err.status;
-        delete err.status
-        return res.status(status).json(err);
+        return res.replyError(err);
       }
     };
+
+    res.replyError = ({code, message, requestInfo}) => {
+      if (ERROR_CODES[code]) {
+        return res.status(ERROR_CODES[code]).json({code, message, requestInfo})
+      }
+      return res.reportInternalError({code, message, requestInfo})
+    }
     next();
   };
 };

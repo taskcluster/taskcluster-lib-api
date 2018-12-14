@@ -1,4 +1,5 @@
 const assert = require('assert');
+const ErrorReply = require('../error-reply');
 
 /**
  * Handle API end-point request
@@ -30,13 +31,10 @@ const callHandler = ({entry, context, monitor}) => {
         return res.reportError('InsufficientScopes', err.messageTemplate, err.details);
       } else if (err.code === 'AuthenticationError') {
         return res.reportError('AuthenticationFailed', err.message, err.details);
+      } else if (err.next) {
+        return err.next(new ErrorReply(err))
       }
-      if (err.status) {
-        const status = err.status;
-        delete err.status;
-        return res.status(status).json(err);
-      }
-      return res.reportInternalError(err);
+      return res.replyError(err)
     });
   };
 };
