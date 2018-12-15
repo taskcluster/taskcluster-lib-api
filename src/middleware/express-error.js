@@ -1,4 +1,4 @@
-const ErrorReply = require('../error-reply')
+const uuid = require('uuid');
 
 /**
  * Create parameter validation middle-ware instance, given a mapping from
@@ -9,14 +9,61 @@ const ErrorReply = require('../error-reply')
  * present must match the pattern given in `options` or the request will be
  * rejected with a 400 error message.
  */
-const expressError = ({errorCodes, context}) => {
+const expressError = ({errorCodes, entry, monitor}) => {
+  const {name: method, cleanPayload} = entry;
   return (err, req, res, next) => {
-    if (err instanceof ErrorReply) {
-      if (errorCodes[err.code]) {
-        return res.status(errorCodes[err.code]).json(err)
-      }
+
+    const incidentId = uuid.v4();
+    let code = err.code || 'InternalServerError';
+    let details = err.details || {incidentId};
+    let message = err.message;
+    if (!err.code) {
+      message = 'Internal Server Error, incidentId: ' + incidentId;
     }
-    return res.reportInternalError(err);
+
+    let status = errorCodes[code];
+    let payload = req.body;
+    if (cleanPayload) {
+      payload = cleanPayload(payload);
+    }
+
+    if (status === undefined || typeof message !== 'string') {
+      const newMessage = 'Internal error, unknown error code: ' + code + '\n' +
+        (message || 'Missing message!');
+      code = 'InternalServerError';
+      status = 500;
+      if (monitor) {
+        const err = new Error(newMessage);
+        err.badMessage = message;
+        err.badCode = code;
+        err.details = details;
+        monitor.reportError(err);
+      }
+      message = newMessage;
+    }
+
+    const requestInfo = {
+      method,
+      params:  req.params,
+      payload,
+      time:    (new Date()).toJSON(),
+    };
+
+    message = message.replace(/{{([a-zA-Z0-9_-]+)}}/g, (text, key) => {
+      let value = details.hasOwnProperty(key) ? details[key] : text;
+      if (typeof value !== 'string') {
+        value = JSON.stringify(value, null, 2);
+      }
+      return value;
+    }) + [
+        '\n\n---\n',
+        '* method:     ' + method,
+        '* errorCode:  ' + code,
+        '* statusCode: ' + status,
+        '* time:       ' + requestInfo.time,
+      ].join('\n');
+
+    return res.status(errorCodes[code]).json({code, message, requestInfo})
   };
 };
 

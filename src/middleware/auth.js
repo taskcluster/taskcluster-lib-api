@@ -315,11 +315,11 @@ const remoteAuthentication = ({signatureValidator, entry}) => {
       }
     } catch (err) {
       if (err.code === 'AuthorizationError') {
-        return res.reportError('InsufficientScopes', err.messageTemplate, err.details);
+        return res.replyError('InsufficientScopes', err.messageTemplate, err.details);
       } else if (err.code === 'AuthenticationError') {
-        return res.reportError('AuthenticationFailed', err.message, err.details);
+        return res.replyError('AuthenticationFailed', err.message, err.details);
       }
-      return res.reportInternalError(err);
+      return res.replyError(err);
     };
   };
 };

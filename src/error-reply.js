@@ -1,12 +1,12 @@
 class ErrorReply extends Error {
-  constructor({code, message, requestInfo}) {
+  constructor({code, message, details}) {
     super();
 
     Error.captureStackTrace(this, this.constructor);
     
     this.code = code;
     this.message = message;
-    this.requestInfo = requestInfo;
+    this.details = details;
   }
 }
   

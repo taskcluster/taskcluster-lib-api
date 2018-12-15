@@ -119,14 +119,14 @@ class API {
       }
 
       middleware.push(
-        buildReportErrorMethod({errorCodes, monitor, entry}),
+        buildReportErrorMethod(),
         parseBody({inputLimit}),
         remoteAuthentication({signatureValidator, entry}),
         parameterValidator({context, entry}),
         queryValidator({context, entry}),
         validateSchemas({validator, absoluteSchemas, rootUrl, serviceName, entry}),
         callHandler({entry, context, monitor}),
-        expressError({errorCodes, context})
+        expressError({errorCodes, entry, monitor})
       );
 
       // Create entry on router

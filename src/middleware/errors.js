@@ -1,6 +1,3 @@
-const uuid = require('uuid');
-const debug = require('debug')('api:errors');
-const _ = require('lodash');
 const ErrorReply = require('../error-reply')
 
 const ERROR_CODES = {
@@ -28,87 +25,14 @@ exports.ERROR_CODES = ERROR_CODES;
  * allowed error codes to HTTP status codes, and `monitor` is an instance of
  * `raven.Client` from an instance of taskcluster-lib-monitor.
  */
-const buildReportErrorMethod = ({errorCodes, monitor, entry}) => {
-  const {name: method, cleanPayload} = entry;
+const buildReportErrorMethod = () => {
   return (req, res, next) => {
     res.reportError = (code, message, details = {}) => {
-      let status = errorCodes[code];
-      let payload = req.body;
-      if (cleanPayload) {
-        payload = cleanPayload(payload);
-      }
-
-      if (status === undefined || typeof message !== 'string') {
-        const newMessage = 'Internal error, unknown error code: ' + code + '\n' +
-          (message || 'Missing message!');
-        code = 'InternalServerError';
-        status = 500;
-        if (monitor) {
-          const err = new Error(newMessage);
-          err.badMessage = message;
-          err.badCode = code;
-          err.details = details;
-          monitor.reportError(err);
-        }
-        message = newMessage;
-      }
-
-      const requestInfo = {
-        method,
-        params:  req.params,
-        payload,
-        time:    (new Date()).toJSON(),
-      };
-
-      message = message.replace(/{{([a-zA-Z0-9_-]+)}}/g, (text, key) => {
-        let value = details.hasOwnProperty(key) ? details[key] : text;
-        if (typeof value !== 'string') {
-          value = JSON.stringify(value, null, 2);
-        }
-        return value;
-      }) + [
-          '\n\n---\n',
-          '* method:     ' + method,
-          '* errorCode:  ' + code,
-          '* statusCode: ' + status,
-          '* time:       ' + requestInfo.time,
-        ].join('\n');
-        throw ({next, code, message, requestInfo});
+      throw new ErrorReply({code, message, details});
     };
 
-    res.reportInternalError = (err, tags = {}) => {
-      try {
-        const incidentId = uuid.v4();
-        res.reportError(
-          'InternalServerError',
-          'Internal Server Error, incidentId: ' + incidentId,
-          {incidentId}
-        );
-        debug(
-          'Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s',
-          req.url, err, err, incidentId, err.stack
-        );
-        if (monitor) {
-          err.incidentId = incidentId;
-          err.method = method;
-          err.params = req.params;
-          let payload = req.body;
-          if (cleanPayload) {
-            payload = cleanPayload(payload);
-          }
-          err.payload = req.payload;
-          monitor.reportError(err, Object.assign(tags, {method}));
-        }
-      } catch (err) {
-        return res.replyError(err);
-      }
-    };
-
-    res.replyError = ({code, message, requestInfo}) => {
-      if (ERROR_CODES[code]) {
-        return res.status(ERROR_CODES[code]).json({code, message, requestInfo})
-      }
-      return res.reportInternalError({code, message, requestInfo})
+    res.replyError = (code, message, details) => {
+      return next(new ErrorReply({code, message, details}));
     }
     next();
   };
