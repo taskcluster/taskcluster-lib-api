@@ -30,10 +30,6 @@ const buildReportErrorMethod = () => {
     res.reportError = (code, message, details = {}) => {
       throw new ErrorReply({code, message, details});
     };
-
-    res.replyError = (code, message, details) => {
-      return next(new ErrorReply({code, message, details}));
-    }
     next();
   };
 };

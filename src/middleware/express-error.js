@@ -1,4 +1,6 @@
 const uuid = require('uuid');
+const debug = require('debug')('api:errors');
+const ErrorReply = require('../error-reply');
 
 /**
  * Create parameter validation middle-ware instance, given a mapping from
@@ -14,6 +16,29 @@ const expressError = ({errorCodes, entry, monitor}) => {
   return (err, req, res, next) => {
 
     const incidentId = uuid.v4();
+    if (!(err instanceof ErrorReply)) {
+      res.reportError(
+        'InternalServerError',
+        'Internal Server Error, incidentId: ' + incidentId,
+        {incidentId}
+      );
+      debug(
+        'Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s',
+        req.url, err, err, incidentId, err.stack
+      );
+      if (monitor) {
+        err.incidentId = incidentId;
+        err.method = method;
+        err.params = req.params;
+        let payload = req.body;
+        if (cleanPayload) {
+          payload = cleanPayload(payload);
+        }
+        err.payload = req.payload;
+        monitor.reportError(err, Object.assign(tags, {method}));
+      }
+    }
+
     let code = err.code || 'InternalServerError';
     let details = err.details || {incidentId};
     let message = err.message;
