@@ -17,11 +17,11 @@ const expressError = ({errorCodes, entry, monitor}) => {
 
     const incidentId = uuid.v4();
     if (!(err instanceof ErrorReply)) {
-      res.reportError(
-        'InternalServerError',
-        'Internal Server Error, incidentId: ' + incidentId,
-        {incidentId}
-      );
+      err = new ErrorReply({
+        code: 'InternalServerError',
+        message: 'Internal Server Error, incidentId: ' + incidentId,
+        details: {incidentId}
+      });
       debug(
         'Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s',
         req.url, err, err, incidentId, err.stack
@@ -35,7 +35,7 @@ const expressError = ({errorCodes, entry, monitor}) => {
           payload = cleanPayload(payload);
         }
         err.payload = req.payload;
-        monitor.reportError(err, Object.assign(tags, {method}));
+        monitor.reportError(err, {method});
       }
     }
 
