@@ -39,13 +39,10 @@ const expressError = ({errorCodes, entry, monitor}) => {
       }
     }
 
-    let code = err.code || 'InternalServerError';
-    let details = err.details || {incidentId};
+    let code = err.code;
+    let details = err.details;
     let message = err.message;
-    if (!err.code) {
-      message = 'Internal Server Error, incidentId: ' + incidentId;
-    }
-
+    
     let status = errorCodes[code];
     let payload = req.body;
     if (cleanPayload) {
