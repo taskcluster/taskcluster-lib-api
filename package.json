@@ -1,6 +1,6 @@
 {
   "name": "taskcluster-lib-api",
-  "version": "12.6.0",
+  "version": "12.7.0",
   "author": "Jonas Finnemann Jensen <jopsen@gmail.com>",
   "description": "taskcluster-lib-api",
   "license": "MPL-2.0",
@@ -20,12 +20,12 @@
     "aws-sdk": "^2.151.0",
     "body-parser": "1.18.3",
     "debug": "^4.0.0",
-    "express": "4.16.2",
+    "express": "4.16.4",
     "hawk": "6.0.2",
     "lodash": "^4.15.0",
     "promise": "^8.0.1",
     "slugid": "^2.0.0",
-    "taskcluster-client": "^11.0.0",
+    "taskcluster-client": "^12.0.0",
     "taskcluster-lib-scopes": "^10.0.1",
     "type-is": "^1.6.15",
     "uuid": "^3.1.0"
@@ -40,7 +40,7 @@
     "taskcluster-lib-testing": "^12.0.0",
     "taskcluster-lib-urls": "^12.0.0",
     "taskcluster-lib-validate": "^12.0.0",
-    "typed-env-config": "^2.0.0"
+    "typed-env-config": "^3.0.0"
   },
   "engines": {
     "node": ">=8"
