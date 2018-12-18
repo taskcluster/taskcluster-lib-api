@@ -15,17 +15,14 @@ const expressError = ({errorCodes, entry, monitor}) => {
   const {name: method, cleanPayload} = entry;
   return (err, req, res, next) => {
 
-    const incidentId = uuid.v4();
     if (!(err instanceof ErrorReply)) {
+      const incidentId = uuid.v4();
+
+      // report the actual error..
       debug(
         'Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s',
         req.url, err, err, incidentId, err.stack
       );
-      err = new ErrorReply({
-        code: 'InternalServerError',
-        message: 'Internal Server Error, incidentId: ' + incidentId,
-        details: {incidentId}
-      });
       if (monitor) {
         err.incidentId = incidentId;
         err.method = method;
@@ -37,6 +34,13 @@ const expressError = ({errorCodes, entry, monitor}) => {
         err.payload = req.payload;
         monitor.reportError(err, {method});
       }
+
+      // then formulate a generic error to send to the HTTP client
+      err = new ErrorReply({
+        code: 'InternalServerError',
+        message: 'Internal Server Error, incidentId: ' + incidentId,
+        details: {incidentId},
+      });
     }
 
     let code = err.code;
@@ -85,7 +89,7 @@ const expressError = ({errorCodes, entry, monitor}) => {
         '* time:       ' + requestInfo.time,
       ].join('\n');
 
-    return res.status(errorCodes[code]).json({code, message, requestInfo})
+    return res.status(errorCodes[code]).json({code, message, requestInfo});
   };
 };
 
