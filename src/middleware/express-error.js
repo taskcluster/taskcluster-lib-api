@@ -17,15 +17,15 @@ const expressError = ({errorCodes, entry, monitor}) => {
 
     const incidentId = uuid.v4();
     if (!(err instanceof ErrorReply)) {
+      debug(
+        'Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s',
+        req.url, err, err, incidentId, err.stack
+      );
       err = new ErrorReply({
         code: 'InternalServerError',
         message: 'Internal Server Error, incidentId: ' + incidentId,
         details: {incidentId}
       });
-      debug(
-        'Error occurred handling: %s, err: %s, as JSON: %j, incidentId: %s',
-        req.url, err, err, incidentId, err.stack
-      );
       if (monitor) {
         err.incidentId = incidentId;
         err.method = method;
