@@ -66,7 +66,7 @@ const validateSchemas = ({validator, absoluteSchemas, rootUrl, serviceName, entr
     res.reply = (json) => {
       if (!req.hasAuthed) {
         const err = new Error('Deferred auth was never checked!');
-        return next(err);
+        throw err;
       }
       // If we're supposed to validate outgoing messages and output schema is
       // defined, then we have to validate against it...
